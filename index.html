@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#211E1A">
+<meta name="description" content="Catalogue your Winsor & Newton Promarker collection, measure real swatch colours from photos, and explore hues and harmonies. Free, offline, no account — all data stays on your device.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>My Promarker Studio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap');
+  :root { --ink:#211E1A; --paper:#FAF8F2; --pencil:#D9D2C4; --faint:#8C8577; --danger:#A4442E; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:system-ui,-apple-system,sans-serif; }
+  button { font:inherit; cursor:pointer; }
+  input, select { font:inherit; }
+  h1 { font-family:'Caveat',cursive; font-size:34px; font-weight:700; line-height:1; margin:0; }
+  .cav { font-family:'Caveat',cursive; font-weight:600; }
+  header { padding:18px 16px 0; border-bottom:1.6px solid var(--ink); }
+  .rowsb { display:flex; justify-content:space-between; align-items:center; margin-top:6px; }
+  .sub { font-size:12.5px; color:var(--faint); }
+  .btn { border:1.5px solid var(--ink); background:transparent; color:var(--ink); border-radius:8px; padding:6px 12px; font-size:13px; }
+  .btn.fill { background:var(--ink); color:var(--paper); }
+  .btn.danger { border-color:var(--danger); color:var(--danger); }
+  .tabs { display:flex; gap:18px; margin-top:12px; }
+  .tab { background:none; border:none; padding:6px 2px 10px; font-size:14.5px; color:var(--faint); border-bottom:3px solid transparent; }
+  .tab.on { color:var(--ink); font-weight:700; border-bottom-color:var(--ink); }
+  .controls { padding:12px 16px 4px; position:sticky; top:0; background:var(--paper); z-index:5; border-bottom:1px solid var(--pencil); }
+  .search { width:100%; padding:9px 12px; border:1.4px solid var(--ink); border-radius:10px; background:#fff; outline:none; font-size:14px; }
+  .chips { display:flex; gap:8px; overflow-x:auto; padding:10px 0; scrollbar-width:none; }
+  .chip { border:1.4px solid var(--ink); background:transparent; color:var(--ink); padding:5px 12px; border-radius:999px; font-size:13px; white-space:nowrap; }
+  .chip.on { background:var(--ink); color:var(--paper); }
+  main { padding:8px 16px 90px; }
+  .famhead { display:flex; align-items:baseline; gap:8px; margin:18px 0 10px; }
+  .famhead .cav { font-size:24px; }
+  .famhead .n { font-size:12px; color:var(--faint); }
+  .famhead .rule { flex:1; border-bottom:1px solid var(--pencil); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(102px,1fr)); gap:12px; }
+  .card { background:transparent; border:none; padding:0; text-align:left; }
+  .card:active { transform:translateY(1px); }
+  .strip { display:flex; width:100%; height:84px; border:1.6px solid var(--ink); background:#fff; position:relative; }
+  .strip > div { flex:1; }
+  .strip > div + div { border-left:1px solid rgba(33,30,26,.35); }
+  .dot { position:absolute; top:4px; right:4px; width:9px; height:9px; border-radius:50%; background:var(--ink); border:1.5px solid var(--paper); }
+  .code { font-family:ui-monospace,Menlo,monospace; font-size:12.5px; font-weight:700; margin-top:5px; }
+  .name { font-size:11.5px; color:var(--faint); line-height:1.25; }
+  .hint { margin-top:28px; font-size:11.5px; color:var(--faint); line-height:1.5; }
+  .empty { text-align:center; padding:44px 20px; }
+  .empty .cav { font-size:30px; }
+  .empty p { color:var(--faint); font-size:14px; line-height:1.5; }
+  .overlay { position:fixed; inset:0; background:rgba(33,30,26,.45); z-index:40; display:flex; align-items:flex-end; justify-content:center; }
+  .overlay.center { align-items:center; padding:12px; background:rgba(33,30,26,.6); z-index:50; }
+  .sheet { background:var(--paper); width:min(560px,100%); max-height:92vh; overflow-y:auto; border-radius:18px 18px 0 0; border:1.6px solid var(--ink); border-bottom:none; padding:16px 18px 26px; }
+  .overlay.center .sheet { border-radius:14px; border-bottom:1.6px solid var(--ink); max-height:90vh; padding:16px; }
+  .layerrow { display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid var(--pencil); }
+  .swx { width:44px; height:44px; border:1.5px solid var(--ink); flex-shrink:0; margin-top:2px; }
+  .mono { font-family:ui-monospace,Menlo,monospace; }
+  .harmrow { display:flex; gap:8px; overflow-x:auto; padding:6px 0; }
+  .harmchip { background:transparent; border:none; padding:0; text-align:center; flex-shrink:0; width:62px; }
+  .harmchip .sw { height:40px; border:1.5px solid var(--ink); }
+  .rangerow { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--pencil); }
+  .rangerow .sw { width:34px; height:34px; border:1.5px solid var(--ink); flex-shrink:0; }
+  .field { width:100%; padding:9px 12px; border:1.4px solid var(--ink); border-radius:10px; background:#fff; margin-top:4px; font-size:14px; }
+  label.f { display:block; font-size:12.5px; margin-top:10px; }
+  .droparea { display:block; border:1.6px dashed var(--ink); border-radius:12px; padding:36px 14px; text-align:center; font-size:14px; color:var(--faint); }
+  canvas { width:100%; border:1.5px solid var(--ink); border-radius:8px; touch-action:manipulation; cursor:crosshair; }
+  #toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:8px 16px; border-radius:999px; font-size:13px; z-index:60; display:none; }
+  .about p { font-size:14px; line-height:1.6; }
+  .about h2 { font-family:'Caveat',cursive; font-size:26px; margin:20px 0 6px; }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none!important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>My Promarker studio</h1>
+  <div class="rowsb">
+    <div class="sub" id="countline"></div>
+    <button class="btn fill" id="addBtn">+ Add colours</button>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-tab="collection">Collection</button>
+    <button class="tab" data-tab="find">Find</button>
+    <button class="tab" data-tab="wheel">Colour wheel</button>
+    <button class="tab" data-tab="about">About</button>
+  </div>
+</header>
+
+<div class="controls" id="controls">
+  <input class="search" id="search" placeholder="Search code or name…">
+  <div class="chips" id="chips"></div>
+</div>
+
+<main>
+  <div id="view"></div>
+</main>
+
+<div id="modalRoot"></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ============ catalogue: the official Promarker range ============ */
+const OFFICIAL = [["Y828","Soft Lime","Yellows","#EDE98A"],["Y417","Buttercup","Yellows","#F7EA80"],["Y657","Yellow","Yellows","#F6E200"],["Y367","Canary","Yellows","#FFDE00"],["Y337","Tulip Yellow","Yellows","#FFD500"],["Y156","Sunflower","Yellows","#FFC419"],["O739","Saffron","Oranges","#FFCB69"],["Y428","Bisque","Neutrals","#F2E3C4"],["O538","Apricot","Oranges","#FFCF9F"],["O555","Gold","Oranges","#F0A93B"],["O567","Amber","Oranges","#F59B23"],["O467","Pumpkin","Oranges","#F08229"],["O177","Bright Orange","Oranges","#F26A22"],["O148","Peach","Oranges","#FBBF93"],["O138","Soft Peach","Pinks","#FCD1B8"],["R576","Lipstick Red","Reds","#E23A3E"],["R666","Red","Reds","#D7282F"],["R565","Poppy","Reds","#EE4B33"],["R665","Berry Red","Reds","#C22536"],["R244","Cardinal Red","Reds","#B5304B"],["R346","Antique Pink","Pinks","#E9A79B"],["R365","Hot Pink","Pinks","#EF5A93"],["M865","Magenta","Magentas","#C42E85"],["M544","Maroon","Reds","#963A59"],["M647","Cerise","Magentas","#E14A94"],["R866","Orange","Oranges","#F47B20"],["R156","Carmine","Reds","#DA3D58"],["R547","Salmon Pink","Pinks","#F79A8A"],["R729","Misty Rose","Pinks","#F4CFC6"],["R327","Dusky Rose","Pinks","#DE9490"],["R519","Pale Pink","Pinks","#F8D7D5"],["M419","Pale Blossom","Pinks","#F7DEDE"],["Y119","Linen","Neutrals","#F0E2D0"],["M727","Rose Pink","Pinks","#EFA3BB"],["V528","Orchid","Violets","#DFB0D2"],["V518","Lavender","Violets","#D3BEE0"],["V327","Lilac","Violets","#BFA0CF"],["V127","Bluebell","Violets","#ACA6CE"],["V735","Plum","Violets","#7E4E7D"],["V546","Purple","Violets","#9038A0"],["V746","Wild Orchid","Violets","#C75FA8"],["V524","Aubergine","Violets","#5C3A64"],["V464","Prussian","Blues","#37476F"],["V234","Indigo Blue","Blues","#46549A"],["V264","Royal Blue","Blues","#3B5CB0"],["B346","Azure","Blues","#3E7BCB"],["B445","French Navy","Blues","#2F3B58"],["B624","Midnight Blue","Blues","#3D4B66"],["BG05","Storm Cloud","Blues","#66696D"],["B137","Sky Blue","Blues","#82B5E6"],["B146","Aegean","Blues","#4EA0D9"],["C429","Cool Aqua","Blues","#C2E1E5"],["C528","Duck Egg","Blues","#CFE3E0"],["B736","China Blue","Blues","#7191C2"],["B336","Cadet Blue","Blues","#93A6BB"],["C917","Denim Blue","Blues","#7E93A6"],["B318","Cloud Blue","Blues","#BBCDDE"],["G917","Grey Green","Greens","#B8C3BB"],["C217","Pebble Blue","Blues","#C4CFD1"],["G619","Tea Green","Greens","#CDDDC9"],["C426","Verdigris","Teals","#8FB6B0"],["C824","Petrol Blue","Teals","#2F6C7C"],["C446","Marine","Teals","#2B8B96"],["C247","Turquoise","Teals","#26A9BC"],["G847","Green","Greens","#009669"],["G635","Pine","Greens","#2A7B57"],["G756","Lush Green","Greens","#35A25F"],["G817","Soft Green","Greens","#ABD9B6"],["G657","Emerald","Greens","#2EAA7D"],["G457","Grass","Greens","#6CBC45"],["G356","Forest Green","Greens","#4C8A38"],["G267","Bright Green","Greens","#57BA47"],["G338","Apple","Greens","#9DCC5F"],["G339","Meadow Green","Greens","#ADD268"],["G159","Lime Zest","Greens","#D6E56A"],["G178","Lime Green","Greens","#C3D830"],["Y334","Moss","Greens","#AFA23C"],["Y524","Herb Green","Greens","#999C3F"],["Y923","Pesto","Greens","#8C8B3C"],["Y717","Pastel Beige","Neutrals","#EEE4D0"],["O837","Praline","Neutrals","#DBBB92"],["O928","Sandstone","Neutrals","#D8C6A6"],["Y217","Champagne","Neutrals","#F3E8CF"],["Y219","Pale Cream","Neutrals","#F6EDD6"],["Y418","Ivory","Neutrals","#F6EFDB"],["O819","Almond","Neutrals","#F1DEC7"],["O729","Blush","Neutrals","#F7DECD"],["O919","Antique White","Neutrals","#F3E9DA"],["O518","Dusky Pink","Neutrals","#F0D5C8"],["O618","Putty","Neutrals","#E9DCCC"],["O237","Light Pecan","Neutrals","#E0C3A4"],["R937","Coral","Oranges","#F5A28A"],["O427","Cinnamon","Earth tones","#D79A5F"],["O528","Tan","Earth tones","#DEB184"],["O829","Muted Pink","Neutrals","#EACAC0"],["O224","Burnt Mahogany","Earth tones","#6C4033"],["O324","Burnt Sienna","Earth tones","#B26239"],["O423","Deep Mocha","Earth tones","#67503E"],["O646","Raw Sienna","Earth tones","#C69052"],["O534","Hazelnut","Earth tones","#B78C61"],["O523","Coffee","Earth tones","#87694D"],["O345","Saddle Brown","Earth tones","#8C5A32"],["O335","Terracotta","Earth tones","#BE6647"],["R946","Burnt Orange","Earth tones","#DD7136"],["O535","Cocoa","Earth tones","#A87A5B"],["O225","Henna","Earth tones","#AE613E"],["O124","Walnut","Earth tones","#7A583C"],["R735","Firebrick","Earth tones","#A4442E"],["R424","Burgundy","Earth tones","#7C3A46"],["R215","Shale","Earth tones","#6C585C"],["V715","Slate","Violets","#786C7D"],["R934","Chestnut","Earth tones","#945239"],["R738","Pastel Pink","Pinks","#F6C2CB"],["R228","Baby Pink","Pinks","#F9C9D1"],["Y635","Pear Green","Greens","#C9CE55"],["Y919","Primrose","Yellows","#F9F0A0"],["Y747","Lemon","Yellows","#FBF08C"],["O948","Mustard","Yellows","#E0B54A"],["O949","Pastel Yellow","Yellows","#F7EDBF"],["O929","Vanilla","Yellows","#F7EAC9"],["O628","Oatmeal","Yellows","#EDE4D2"],["O129","Lemon Chiffon","Yellows","#FAF3CE"],["Y129","Satin","Neutrals","#F3E4CF"],["Y616","Khaki","Neutrals","#B5A878"],["O727","Caramel","Neutrals","#D9A56E"],["Y229","Wheat","Neutrals","#EFD9B0"],["O547","Honeycomb","Oranges","#EFB04B"],["O277","Mandarin","Oranges","#F8981D"],["O248","Mango","Oranges","#FBAD5D"],["O136","Ginger","Oranges","#E88A3C"],["O228","Sunkissed Pink","Pinks","#F9C6A8"],["R438","Cocktail Pink","Pinks","#EE7A9B"],["M428","Blossom","Pinks","#F6C8D8"],["M328","Pink Carnation","Pinks","#F3B8CC"],["O629","Pink Camellia","Pinks","#F0BFB3"],["R455","Ruby","Reds","#C42A48"],["R445","Crimson","Reds","#C6203A"],["M137","Fuchsia Pink","Magentas","#D4489B"],["V865","Mulberry","Magentas","#9B4176"],["B617","Cornflower","Violets","#8B9AD6"],["B528","Blue Pearl","Violets","#C9CFE8"],["V626","Amethyst","Violets","#8A6FAE"],["V718","Pink Pearl","Violets","#EBD2DE"],["V245","Violet","Blues","#6A5AA8"],["B637","Cobalt Blue","Blues","#2F5FA8"],["B944","Egyptian Blue","Blues","#2A3F7E"],["B555","True Blue","Blues","#2E6FC4"],["C847","Cyan","Blues","#00A3D9"],["B138","Arctic Blue","Blues","#A9D9EF"],["B119","Powder Blue","Blues","#C9DEEA"],["C719","Pastel Blue","Blues","#D3E6EA"],["G956","Ocean Teal","Teals","#1F7A73"],["G829","Pastel Green","Greens","#D8E8D2"],["G724","Holly","Greens","#3D7A4A"],["G637","Mint Green","Greens","#9ADBB4"],["G258","Leaf Green","Greens","#7FC941"],["Y724","Olive Green","Greens","#7D7B3A"],["G136","Marsh Green","Greens","#6B7A46"],["O346","Spice","Earth tones","#B5713F"],["O615","Umber","Earth tones","#857357"],["R646","Burnt Umber","Earth tones","#6E4A38"],["O234","Chocolate","Earth tones","#7A4E36"],["O235","Cedar Brown","Earth tones","#8F5A3E"],["WG00","Warm Grey 00","Greys","#F0EDE7"],["WG0","Warm Grey 0","Greys","#E6E2DA"],["WG1","Warm Grey 1","Greys","#D6D1C7"],["WG2","Warm Grey 2","Greys","#C2BCB1"],["WG3","Warm Grey 3","Greys","#ABA599"],["WG4","Warm Grey 4","Greys","#948D81"],["WG5","Warm Grey 5","Greys","#7C756A"],["WG6","Warm Grey 6","Greys","#645D53"],["WG7","Warm Grey 7","Greys","#4C463E"],["CG00","Cool Grey 00","Greys","#EFF0F0"],["CG0","Cool Grey 0","Greys","#E4E6E6"],["CG1","Cool Grey 1","Greys","#D3D6D6"],["CG2","Cool Grey 2","Greys","#BFC3C4"],["CG3","Cool Grey 3","Greys","#A8ADAF"],["CG4","Cool Grey 4","Greys","#91979A"],["CG5","Cool Grey 5","Greys","#7A8084"],["CG6","Cool Grey 6","Greys","#63686D"],["CG7","Cool Grey 7","Greys","#4B5056"],["IG00","Ice Grey 00","Greys","#EEF1F3"],["IG0","Ice Grey 0","Greys","#E3E7EA"],["IG1","Ice Grey 1","Greys","#D2D8DC"],["IG2","Ice Grey 2","Greys","#BEC5CB"],["IG3","Ice Grey 3","Greys","#A7AFB7"],["IG4","Ice Grey 4","Greys","#9098A2"],["IG5","Ice Grey 5","Greys","#79828D"],["IG6","Ice Grey 6","Greys","#626B77"],["IG7","Ice Grey 7","Greys","#4A535F"],["XB","Black","Black + blender","#2B2A28"],["XBB","Blue Black","Black + blender","#2A2E38"],["BL","Blender","Black + blender","#F7F6F3"],["NN YL","Luminous Yellow","Neon","#F2F553"],["NN OR","Radiant Orange","Neon","#FF8A3C"],["NN RD","Spark Red","Neon","#FF5A5A"],["NN PK","Electric Pink","Neon","#FF5FA8"],["NN BL","Volt Blue","Neon","#3FA8F5"],["NN GR","Glowing Green","Neon","#5AE05A"],["MT VT","Metallic Violet","Metallic","#8E7BA8"],["MT BL","Metallic Blue","Metallic","#6E86A8"],["MT GR","Metallic Green","Metallic","#6E9A82"],["MT SIL","Silver","Metallic","#B8BCC0"],["MT GOL","Gold","Metallic","#C9A84C"],["MT RGOL","Red Gold","Metallic","#C08A6A"]];
+const FAMILIES = ["Yellows","Neutrals","Oranges","Pinks","Reds","Magentas","Violets","Blues","Teals","Greens","Earth tones","Greys","Black + blender","Neon","Metallic"];
+const byCode = Object.fromEntries(OFFICIAL.map(o => [o[0], o]));
+
+/* ============ colour math ============ */
+function hexToRgb(h){ const m=/^#?([0-9a-f]{6})$/i.exec(h||""); if(!m) return [0,0,0]; const n=parseInt(m[1],16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+function rgbToHex(r,g,b){ return "#"+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,"0")).join("").toUpperCase(); }
+function inkPass(hex){ const [r,g,b]=hexToRgb(hex); const a=0.55; const f=c=>c*(1-a)+(c*c/255)*a; return rgbToHex(f(r),f(g),f(b)); }
+function estimateLayers(hex){ const l2=inkPass(hex); return [hex.toUpperCase(), l2, inkPass(l2)]; }
+function hexToLch(hex){  let [r,g,b]=hexToRgb(hex).map(v=>v/255);
+  const lin=c=> c<=0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4);
+  r=lin(r); g=lin(g); b=lin(b);
+  const X=(0.4124*r+0.3576*g+0.1805*b)/0.95047, Y=0.2126*r+0.7152*g+0.0722*b, Z=(0.0193*r+0.1192*g+0.9505*b)/1.08883;
+  const f=t=> t>0.008856 ? Math.cbrt(t) : 7.787*t+16/116;
+  const fx=f(X), fy=f(Y), fz=f(Z);
+  const L=116*fy-16, A=500*(fx-fy), B=200*(fy-fz);
+  const C=Math.sqrt(A*A+B*B);
+  let H=Math.atan2(B,A)*180/Math.PI; if(H<0) H+=360;
+  return {L,C,H};
+}
+function hexToLab(hex){
+  let [r,g,b]=hexToRgb(hex).map(v=>v/255);
+  const lin=c=> c<=0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4);
+  r=lin(r); g=lin(g); b=lin(b);
+  const X=(0.4124*r+0.3576*g+0.1805*b)/0.95047, Y=0.2126*r+0.7152*g+0.0722*b, Z=(0.0193*r+0.1192*g+0.9505*b)/1.08883;
+  const f=t=> t>0.008856 ? Math.cbrt(t) : 7.787*t+16/116;
+  const fx=f(X), fy=f(Y), fz=f(Z);
+  return {L:116*fy-16, a:500*(fx-fy), b:200*(fy-fz)};
+}
+function labDist(p,q){ return Math.sqrt((p.L-q.L)**2+(p.a-q.a)**2+(p.b-q.b)**2); }
+function parseColorInput(raw){
+  if(!raw) return null;
+  let s=raw.trim().toLowerCase();
+  // hex: #abc, #aabbcc, or bare
+  let m=/^#?([0-9a-f]{6})$/.exec(s);
+  if(m) return "#"+m[1].toUpperCase();
+  m=/^#?([0-9a-f]{3})$/.exec(s);
+  if(m) return "#"+m[1].split("").map(c=>c+c).join("").toUpperCase();
+  // rgb: "12,34,56" or "rgb(12,34,56)" or "12 34 56"
+  m=/^(?:rgb\s*\(?)?\s*(\d{1,3})[\s,]+(\d{1,3})[\s,]+(\d{1,3})\s*\)?$/.exec(s);
+  if(m){
+    const v=[m[1],m[2],m[3]].map(Number);
+    if(v.every(n=>n>=0&&n<=255)) return rgbToHex(v[0],v[1],v[2]);
+  }
+  return null;
+}
+function hexToHsl(hex){
+  let [r,g,b]=hexToRgb(hex).map(v=>v/255);
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  let h=0;
+  if(d){ if(max===r) h=((g-b)/d)%6; else if(max===g) h=(b-r)/d+2; else h=(r-g)/d+4; h*=60; if(h<0)h+=360; }
+  const l=(max+min)/2, s= d===0 ? 0 : d/(1-Math.abs(2*l-1));
+  return {h:Math.round(h), s:Math.round(s*100), l:Math.round(l*100)};
+}
+const M_SECTORS=["R","YR","Y","GY","G","BG","B","PB","P","RP"];
+const M_ANCHORS=[25,60,92,122,152,195,235,282,315,345];
+function labHueToMunsellDeg(h){
+  for(let i=0;i<10;i++){
+    const a=M_ANCHORS[i]; let b=M_ANCHORS[(i+1)%10]; let hh=h;
+    if(b<a){ b+=360; if(hh<a) hh+=360; }
+    if(hh>=a && hh<=b){ const t=(hh-a)/(b-a); return ((i+t)*36)%360; }
+  }
+  return 0;
+}
+function munsellNotation(hex){
+  const {L,C,H}=hexToLch(hex); const V=L/10, Chr=C/5;
+  if(C<4) return {text:"N "+V.toFixed(1), neutral:true};
+  const deg=labHueToMunsellDeg(H);
+  let step=5+((deg%36)/36)*10, idx=Math.floor(deg/36);
+  if(step>10){ step-=10; idx=(idx+1)%10; }
+  return {text: step.toFixed(1)+M_SECTORS[idx]+" "+V.toFixed(1)+"/"+Chr.toFixed(1), neutral:false};
+}
+function hueDist(a,b){ const d=Math.abs(a-b)%360; return d>180 ? 360-d : d; }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ============ storage: localStorage with in-memory fallback ============ */
+const STORE_KEY="promarker-studio-personal-v1";
+const SEED_KEY="promarker-studio-personal-seeded";
+const SEED_OWNED=["Y828","Y417","Y657","Y367","Y337","Y156","O739","Y428","O538","O555","O567","O467","O177","O148","O138","R576","R666","R565","R665","R244","R346","R365","M865","M544","M647","R866","R156","R547","R729","R327","R519","M419","Y119","M727","V528","V518","V327","V127","V735","V546","V746","V524","V464","V234","V264","B346","B445","B624","BG05","B137","B146","C429","C528","B736","B336","C917","B318","G917","C217","G619","C426","C824","C446","C247","G847","G635","G756","G817","G657","G457","G356","G267","G338","G339","G159","G178","Y334","Y524","Y923","Y717","O837","O928","Y217","Y219","Y418","O819","O729","O919","O518","O618","O237","R937","O427","O528","O829","O224","O324","O423","O646","O534","O523","O345","O335","R946","O535","O225","O124","R735","R424","R215","V715","R934","R738","R228","Y635"];
+let memoryStore=null;
+let storageOK=null; // null=unknown, true/false once tested
+function storageAvailable(){
+  if(storageOK!==null) return storageOK;
+  try{
+    const t="__pmk_test__";
+    localStorage.setItem(t,"1"); localStorage.removeItem(t);
+    storageOK=true;
+  }catch(e){ storageOK=false; }
+  return storageOK;
+}
+function loadState(){
+  try{ const raw=localStorage.getItem(STORE_KEY); if(raw){ const d=JSON.parse(raw); return {owned:d.owned||[], overrides:d.overrides||{}, customs:d.customs||[]}; } }
+  catch(e){ if(memoryStore) return memoryStore; }
+  return memoryStore ? JSON.parse(JSON.stringify(memoryStore)) : {owned:[], overrides:{}, customs:[]};
+}
+function saveState(){
+  // keep an independent in-memory copy so a later reassignment of `state` can't corrupt the fallback
+  memoryStore=JSON.parse(JSON.stringify(state));
+  try{
+    const payload=JSON.stringify(state);
+    localStorage.setItem(STORE_KEY, payload);
+    // read-back verification: confirm the write actually persisted
+    if(localStorage.getItem(STORE_KEY)!==payload) throw new Error("verify failed");
+    return true;
+  }catch(e){
+    toast("Saved on this page only — storage is blocked, so it won't survive a reload. Export a backup to be safe.");
+    return false;
+  }
+}
+
+/* ============ toast ============ */
+let toastTimer=null;
+function toast(msg){
+  const t=document.getElementById("toast");
+  if(!t) return;
+  t.textContent=msg; t.style.display="block";
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ t.style.display="none"; }, 3200);
+}
+
+/* ============ app state ============ */
+let state=loadState();
+// One-time seed of the personal collection on first launch
+(function seedIfNeeded(){
+  let seeded=false;
+  try{ seeded=localStorage.getItem(SEED_KEY)==="1"; }catch(e){ seeded=false; }
+  const emptyCollection = state.owned.length===0 && state.customs.length===0 && Object.keys(state.overrides).length===0;
+  if(!seeded && emptyCollection){
+    state.owned = SEED_OWNED.slice();
+    try{ localStorage.setItem(SEED_KEY,"1"); }catch(e){}
+    saveState();
+  }
+})();
+let ui={ tab:"collection", fam:"All", q:"", wheelLayer:0, findQ:"", findScope:"owned", findResult:null };
+
+function ownedColors(){
+  const off=state.owned.filter(c=>byCode[c]).map(c=>{ const [code,name,fam,hex]=byCode[c]; return {code,name,family:fam,hex,custom:false}; });
+  const cus=state.customs.map(c=>({...c, custom:true}));
+  return off.concat(cus);
+}
+function findOwned(code){ return ownedColors().find(c=>c.code===code); }
+function layersFor(c){
+  const ov=state.overrides[c.code];
+  const est=estimateLayers(c.hex);
+  if(!ov) return {layers:est, measured:[false,false,false]};
+  return {layers:est.map((e,i)=> (ov.layers&&ov.layers[i]) || e), measured:[0,1,2].map(i=> !!(ov.layers&&ov.layers[i]))};
+}
+
+/* ============ toast ============ */
+
+/* ============ rendering ============ */
+const view=document.getElementById("view");
+function renderCount(){
+  const base=ownedColors().length+" of "+(OFFICIAL.length+state.customs.length)+" colours · "+
+    Object.keys(state.overrides).filter(c=>findOwned(c)).length+" measured";
+  const el=document.getElementById("countline");
+  if(storageAvailable()){
+    el.textContent=base;
+    el.style.color="";
+  }else{
+    el.innerHTML=base+' · <span style="color:#A4442E">⚠ storage blocked — changes won\'t be kept. Export a backup.</span>';
+  }
+}
+function renderChips(){
+  const el=document.getElementById("chips");
+  el.innerHTML=["All"].concat(FAMILIES).map(f=>
+    '<button class="chip'+(ui.fam===f?" on":"")+'" data-fam="'+f+'">'+f+"</button>").join("");
+}
+function stripHtml(layers, measured){
+  return '<div class="strip">'+layers.map(h=>'<div style="background:'+h+'"></div>').join("")+
+    (measured&&measured.some(Boolean)?'<span class="dot"></span>':"")+"</div>";
+}
+function renderCollection(){
+  const own=ownedColors();
+  if(own.length===0){
+    view.innerHTML='<div class="empty"><div class="cav">Your marker case is empty</div>'+
+      '<p>Add the Promarkers you own from the official range, then photograph your own swatches to record how each colour really behaves — in one, two and three layers of ink.</p>'+
+      '<button class="btn fill" id="emptyAdd" style="padding:10px 18px;font-size:15px">Add your first colours</button></div>';
+    const b=document.getElementById("emptyAdd");
+    if(b) b.addEventListener("click", openAdd);
+    return;
+  }
+  const q=ui.q.trim().toLowerCase();
+  const vis=own.filter(c=> (ui.fam==="All"||c.family===ui.fam) &&
+    (!q || c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)));
+  const groups=FAMILIES.filter(f=> ui.fam==="All"||f===ui.fam)
+    .map(f=>({f, items:vis.filter(c=>c.family===f)})).filter(g=>g.items.length);
+  if(!groups.length){ view.innerHTML='<div class="empty"><p>Nothing matches "'+escapeHtml(ui.q)+'".</p></div>'; return; }
+  view.innerHTML=groups.map(g=>
+    '<section><div class="famhead"><span class="cav">'+g.f+'</span><span class="n">'+g.items.length+'</span><span class="rule"></span></div>'+
+    '<div class="grid">'+g.items.map(c=>{
+      const {layers,measured}=layersFor(c);
+      return '<button class="card" data-code="'+escapeHtml(c.code)+'">'+stripHtml(layers,measured)+
+        '<div class="code">'+escapeHtml(c.code)+(c.custom?" *":"")+'</div><div class="name">'+escapeHtml(c.name)+'</div></button>';
+    }).join("")+"</div></section>").join("")+
+    '<p class="hint">Each square shows one, two and three layers of ink. A dot marks colours measured from your own swatch photos; * marks colours you added outside the official range. Unmeasured colours are estimates.</p>';
+  view.querySelectorAll(".card").forEach(el=> el.addEventListener("click", ()=>openDetail(el.dataset.code)));
+}
+function renderWheel(){
+  const own=ownedColors();
+  const size=360, cx=180, cy=180, R=146, maxC=75;
+  const dots=own.map(c=>{
+    const hex=layersFor(c).layers[ui.wheelLayer];
+    const {C,H}=hexToLch(hex);
+    const r=Math.min(C/maxC,1)*R;
+    const neutral=C<4;
+    const hash=[...c.code].reduce((n,ch)=>n+ch.charCodeAt(0)*7,0);
+    const a=(neutral ? hash%360 : labHueToMunsellDeg(H)+18)*Math.PI/180;
+    const rr=neutral?Math.min(r,8):r;
+    return {c,hex,x:cx+rr*Math.cos(a),y:cy-rr*Math.sin(a)};
+  });
+  let svg='<svg viewBox="0 0 '+size+" "+size+'" style="width:100%;max-width:520px;display:block;margin:8px auto 0">';
+  [0.33,0.66,1].forEach(f=>{ svg+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(R*f)+'" fill="none" stroke="#D9D2C4" stroke-dasharray="2 4"/>'; });
+  M_SECTORS.forEach((s,i)=>{
+    const a=(i*36+18)*Math.PI/180;
+    svg+='<line x1="'+(cx+10*Math.cos(a))+'" y1="'+(cy-10*Math.sin(a))+'" x2="'+(cx+R*Math.cos(a))+'" y2="'+(cy-R*Math.sin(a))+'" stroke="#D9D2C4" stroke-dasharray="2 4"/>';
+    svg+='<text x="'+(cx+(R+16)*Math.cos(a))+'" y="'+(cy-(R+16)*Math.sin(a))+'" font-size="11" fill="#8C8577" text-anchor="middle" dominant-baseline="middle" font-family="ui-monospace,monospace">5'+s+"</text>";
+  });
+  dots.forEach(d=>{
+    svg+='<circle cx="'+d.x+'" cy="'+d.y+'" r="8" fill="'+d.hex+'" stroke="#FAF8F2" stroke-width="1.6" style="cursor:pointer" data-code="'+escapeHtml(d.c.code)+'"><title>'+escapeHtml(d.c.code+" "+d.c.name)+"</title></circle>";
+  });
+  svg+="</svg>";
+  view.innerHTML=
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">'+
+    '<div style="font-size:12px;letter-spacing:1.5px;color:#8C8577">MUNSELL-STYLE PLANE</div>'+
+    '<div style="display:flex;gap:6px">'+[0,1,2].map(i=>
+      '<button class="chip'+(ui.wheelLayer===i?" on":"")+'" data-layer="'+i+'">'+(i+1)+" layer"+(i?"s":"")+"</button>").join("")+"</div></div>"+
+    (own.length ? svg+'<p style="font-size:12px;color:#8C8577;text-align:center;margin-top:4px">'+own.length+" colours · angle = hue, distance from centre = chroma. Tap a dot to open it.</p>"
+      : '<div class="empty"><p>Add some colours first and they will appear here, arranged by hue and chroma.</p></div>')+
+    '<p class="hint">Positions are approximate Munsell, computed from CIELAB hue and chroma rather than the full renotation tables. Near-neutrals gather at the centre.</p>';
+  view.querySelectorAll("[data-layer]").forEach(el=> el.addEventListener("click", ()=>{ ui.wheelLayer=+el.dataset.layer; renderView(); }));
+  view.querySelectorAll("circle[data-code]").forEach(el=> el.addEventListener("click", ()=>openDetail(el.dataset.code)));
+}
+function nearestMarkers(targetHex, scope){
+  const target=hexToLab(targetHex);
+  let pool;
+  if(scope==="owned"){
+    pool=ownedColors().map(c=>({code:c.code, name:c.name, family:c.family, hex:layersFor(c).layers[0], owned:true, custom:c.custom}));
+  } else {
+    const ownedSet=new Set(ownedColors().map(c=>c.code));
+    pool=OFFICIAL.map(o=>({code:o[0], name:o[1], family:o[2], hex: ownedSet.has(o[0]) ? layersFor({code:o[0],hex:o[3]}).layers[0] : o[3], owned:ownedSet.has(o[0])}));
+    ownedColors().filter(c=>c.custom).forEach(c=> pool.push({code:c.code,name:c.name,family:c.family,hex:layersFor(c).layers[0],owned:true,custom:true}));
+  }
+  return pool.map(c=>({...c, d:labDist(target, hexToLab(c.hex))})).sort((a,b)=>a.d-b.d).slice(0,6);
+}
+function matchLabel(d){
+  if(d<2) return "near-perfect";
+  if(d<5) return "very close";
+  if(d<10) return "close";
+  if(d<20) return "in the ballpark";
+  return "loose";
+}
+function renderFind(){
+  const parsed=parseColorInput(ui.findQ);
+  let html='<div style="margin-top:12px">'+
+    '<input class="search" id="findInput" placeholder="Paste a hex or RGB — e.g. #3E7BCB or 62,123,203" value="'+escapeHtml(ui.findQ)+'" autocomplete="off" autocapitalize="off" spellcheck="false">'+
+    '<div style="display:flex;gap:8px;margin-top:10px">'+
+    '<button class="chip'+(ui.findScope==="owned"?" on":"")+'" data-scope="owned">My collection</button>'+
+    '<button class="chip'+(ui.findScope==="range"?" on":"")+'" data-scope="range">Whole range</button>'+
+    '</div>';
+
+  if(ui.findQ.trim() && !parsed){
+    html+='<div class="sub" style="margin-top:14px">That doesn\'t read as a hex or RGB colour. Try <span class="mono">#3E7BCB</span>, <span class="mono">3E7BCB</span>, or <span class="mono">62,123,203</span>.</div>';
+  } else if(parsed){
+    const [r,g,b]=hexToRgb(parsed);
+    const results=nearestMarkers(parsed, ui.findScope);
+    html+='<div style="display:flex;align-items:center;gap:12px;margin:16px 0 6px">'+
+      '<div style="width:56px;height:56px;border:1.6px solid var(--ink);background:'+parsed+'"></div>'+
+      '<div><div style="font-size:13px;font-weight:600">Your colour</div>'+
+      '<div class="mono" style="font-size:12.5px">'+parsed+' · rgb('+r+', '+g+', '+b+')</div></div></div>';
+    html+='<div class="famhead"><span class="cav">Closest markers</span><span class="rule"></span></div>';
+    if(!results.length){
+      html+='<div class="sub">No colours to match against — add some to your collection first, or switch to Whole range.</div>';
+    } else {
+      html+=results.map((c,i)=>
+        '<div class="rangerow" data-open="'+(c.owned?escapeHtml(c.code):"")+'" style="'+(c.owned?"cursor:pointer":"")+'">'+
+        '<div class="sw" style="background:'+c.hex+(c.owned?"":";border-style:dashed;border-color:var(--faint)")+'"></div>'+
+        '<div style="flex:1;min-width:0">'+
+        '<span class="mono" style="font-weight:700;font-size:12.5px">'+escapeHtml(c.code)+'</span>'+
+        '<span style="font-size:12.5px;margin-left:8px">'+escapeHtml(c.name)+'</span>'+
+        '<div style="font-size:11px;color:var(--faint)">'+escapeHtml(c.family)+' · '+matchLabel(c.d)+' (ΔE '+c.d.toFixed(1)+')'+(c.owned?"":" · not owned")+'</div>'+
+        '</div>'+(i===0?'<span class="mono" style="font-size:11px;color:var(--faint)">closest</span>':"")+'</div>').join("");
+    }
+    html+='<p class="hint">Distance is CIELAB ΔE — lower is a closer perceptual match. Owned colours use your measured one-layer value where you have one; others use the estimated swatch. Tap an owned result to open it.</p>';
+  } else {
+    html+='<p class="hint">Paste any hex or RGB value to find the Promarkers that come closest. Handy when a client, brand palette, or reference image gives you a colour and you want to know what you can reach for.</p>';
+  }
+  html+='</div>';
+  view.innerHTML=html;
+
+  const inp=document.getElementById("findInput");
+  inp.addEventListener("input", e=>{
+    ui.findQ=e.target.value;
+    // re-render results without losing focus: update only below the input
+    const parsedNow=parseColorInput(ui.findQ);
+    renderFindResultsOnly(parsedNow);
+  });
+  view.querySelectorAll("[data-scope]").forEach(el=> el.addEventListener("click", ()=>{ ui.findScope=el.dataset.scope; renderFind(); document.getElementById("findInput").focus(); }));
+  bindFindRows();
+}
+function renderFindResultsOnly(){
+  // simplest robust approach: full re-render but restore focus + caret
+  const inp=document.getElementById("findInput");
+  const caret=inp?inp.selectionStart:null;
+  renderFind();
+  const ni=document.getElementById("findInput");
+  if(ni){ ni.focus(); if(caret!=null){ try{ ni.setSelectionRange(caret,caret); }catch(e){} } }
+}
+function bindFindRows(){
+  view.querySelectorAll("[data-open]").forEach(el=>{
+    if(el.dataset.open) el.addEventListener("click", ()=>openDetail(el.dataset.open));
+  });
+}
+function renderAbout(){  view.innerHTML='<div class="about">'+
+    '<h2>What this is</h2><p>Eugenie&#39;s personal Promarker companion. Track which markers you own, record the real colour of your own swatches (screen charts routinely misrepresent them), see everything on a hue–chroma plane, and find harmonies within your collection.</p>'+
+    '<h2>Your data</h2><p>Everything is stored only in this browser, on this device — no account, no server, no analytics. This edition starts pre-loaded with your 115-colour collection. If you ever clear the browser data it resets, so export a backup now and then. Re-importing or the reset button will not wipe and re-seed unexpectedly.</p>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0">'+
+    '<button class="btn" id="exportBtn">Export backup</button>'+
+    '<button class="btn" id="importBtn">Import backup</button>'+
+    '<button class="btn danger" id="wipeBtn">Erase everything</button>'+
+    '<input type="file" id="importFile" accept="application/json" style="display:none"></div>'+
+    '<h2>Accuracy</h2><p>Preloaded colours are estimates; measured swatches are only as good as your photo — indirect daylight gives the truest samples. Munsell positions are approximations computed from CIELAB. This app is not affiliated with or endorsed by Winsor &amp; Newton.</p>'+
+    '</div>';
+  document.getElementById("exportBtn").addEventListener("click", exportData);
+  document.getElementById("importBtn").addEventListener("click", ()=>document.getElementById("importFile").click());
+  document.getElementById("importFile").addEventListener("change", e=>{ if(e.target.files[0]) importData(e.target.files[0]); });
+  document.getElementById("wipeBtn").addEventListener("click", ()=>{
+    if(confirm("Erase your whole collection and all measurements from this device?")){
+      state={owned:[],overrides:{},customs:[]}; try{localStorage.setItem(SEED_KEY,"1");}catch(e){} saveState(); renderAll(); toast("Erased");
+    }
+  });
+}
+function renderView(){
+  document.getElementById("controls").style.display = ui.tab==="collection" ? "block" : "none";
+  if(ui.tab==="collection") renderCollection();
+  else if(ui.tab==="find") renderFind();
+  else if(ui.tab==="wheel") renderWheel();
+  else renderAbout();
+}
+function renderAll(){ renderCount(); renderChips(); renderView(); bindChips(); }
+function bindChips(){
+  document.querySelectorAll("#chips .chip").forEach(el=> el.addEventListener("click", ()=>{ ui.fam=el.dataset.fam; renderChips(); bindChips(); renderView(); }));
+}
+
+/* ============ modals ============ */
+const modalRoot=document.getElementById("modalRoot");
+function closeModal(){ modalRoot.innerHTML=""; }
+function sheet(html, center){
+  modalRoot.innerHTML='<div class="overlay'+(center?" center":"")+'"><div class="sheet">'+html+"</div></div>";
+  const ov=modalRoot.querySelector(".overlay");
+  ov.addEventListener("click", e=>{ if(e.target===ov) closeModal(); });
+  return modalRoot.querySelector(".sheet");
+}
+
+/* ---- detail ---- */
+const SCHEMES=[
+  {name:"Complementary", offsets:[180]},
+  {name:"Analogous", offsets:[-30,30]},
+  {name:"Triadic", offsets:[120,240]},
+  {name:"Split-complementary", offsets:[150,210]},
+];
+function harmoniesFor(color){
+  const base=hexToLch(layersFor(color).layers[0]);
+  if(base.C<8) return null;
+  const pool=ownedColors().filter(c=>c.code!==color.code)
+    .map(c=>({c, lch:hexToLch(layersFor(c).layers[0])}))
+    .filter(x=>x.lch.C>=11);
+  return SCHEMES.map(s=>{
+    let matches=[];
+    s.offsets.forEach(off=>{
+      const target=(base.H+off+360)%360;
+      matches=matches.concat(pool.map(x=>({...x, d:hueDist(x.lch.H,target)})).filter(x=>x.d<=24).sort((a,b)=>a.d-b.d).slice(0,3));
+    });
+    matches=matches.filter((m,i,arr)=>arr.findIndex(y=>y.c.code===m.c.code)===i);
+    return {name:s.name, matches};
+  });
+}
+function openDetail(code){
+  const c=findOwned(code);
+  if(!c) return;
+  const {layers,measured}=layersFor(c);
+  const harm=harmoniesFor(c);
+  let html='<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+    '<div><div class="mono" style="font-weight:700;font-size:15px">'+escapeHtml(c.code)+'</div>'+
+    '<div class="cav" style="font-size:30px;font-weight:700;line-height:1.05">'+escapeHtml(c.name)+'</div>'+
+    '<div class="sub">'+escapeHtml(c.family)+(c.custom?" · added by you":"")+"</div></div>"+
+    '<button class="btn" data-x="close">Close</button></div>'+
+    '<div style="margin-top:14px">'+stripHtml(layers).replace('height:84px','height:64px')+"</div>";
+  [0,1,2].forEach(i=>{
+    const [r,g,b]=hexToRgb(layers[i]);
+    const lch=hexToLch(layers[i]), hsl=hexToHsl(layers[i]), mun=munsellNotation(layers[i]);
+    html+='<div class="layerrow"><div class="swx" style="background:'+layers[i]+'"></div>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">'+(i+1)+" layer"+(i?"s":"")+
+      ' <span style="font-weight:400;color:#8C8577;font-size:12px">'+(measured[i]?"measured":"estimate")+"</span></div>"+
+      '<div class="mono" style="font-size:12px">'+layers[i]+" · rgb("+r+", "+g+", "+b+")</div>"+
+      '<div class="mono" style="font-size:11.5px;color:#8C8577;margin-top:2px">≈'+mun.text+" · hue "+Math.round(lch.H)+"° · chroma "+lch.C.toFixed(0)+" · sat "+hsl.s+"%</div></div>"+
+      '<button class="btn" data-sample="'+i+'">Sample</button></div>';
+  });
+  html+='<div style="margin-top:16px"><div class="cav" style="font-size:24px">From your collection</div>';
+  if(!harm) html+='<div class="sub" style="margin-top:4px">This colour is close to neutral, so hue-based schemes do not apply. Neutrals pair with everything.</div>';
+  else harm.forEach(s=>{
+    html+='<div style="margin-top:10px"><div style="font-size:12.5px;font-weight:600">'+s.name+"</div>";
+    if(!s.matches.length) html+='<div style="font-size:12px;color:#8C8577">Nothing you own sits near that hue.</div>';
+    else html+='<div class="harmrow">'+s.matches.map(m=>
+      '<button class="harmchip" data-jump="'+escapeHtml(m.c.code)+'"><div class="sw" style="background:'+layersFor(m.c).layers[0]+'"></div>'+
+      '<div class="mono" style="font-size:10.5px;font-weight:700;margin-top:3px">'+escapeHtml(m.c.code)+'</div>'+
+      '<div style="font-size:9.5px;color:#8C8577;line-height:1.15">'+escapeHtml(m.c.name)+"</div></button>").join("")+"</div>";
+    html+="</div>";
+  });
+  html+="</div>";
+  html+='<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">'+
+    (state.overrides[c.code]?'<button class="btn" data-x="reset">Reset to estimates</button>':"")+
+    '<button class="btn danger" data-x="remove">'+(c.custom?"Delete colour":"Remove from collection")+"</button></div>";
+  const el=sheet(html);
+  el.querySelector('[data-x="close"]').addEventListener("click", closeModal);
+  el.querySelectorAll("[data-sample]").forEach(b=> b.addEventListener("click", ()=>{
+    const i=+b.dataset.sample;
+    openSampler(c.code+" — "+(i+1)+" layer"+(i?"s":""), hex=>{
+      const ov=state.overrides[c.code]||{layers:[null,null,null]};
+      ov.layers[i]=hex;
+      state.overrides[c.code]=ov;
+      saveState(); toast("Saved"); openDetail(c.code); renderAll();
+    });
+  }));
+  el.querySelectorAll("[data-jump]").forEach(b=> b.addEventListener("click", ()=>openDetail(b.dataset.jump)));
+  const rst=el.querySelector('[data-x="reset"]');
+  if(rst) rst.addEventListener("click", ()=>{ delete state.overrides[c.code]; saveState(); openDetail(c.code); renderAll(); });
+  el.querySelector('[data-x="remove"]').addEventListener("click", ()=>{
+    delete state.overrides[c.code];
+    if(c.custom) state.customs=state.customs.filter(x=>x.code!==c.code);
+    else state.owned=state.owned.filter(x=>x!==c.code);
+    saveState(); closeModal(); renderAll(); toast(c.code+" removed");
+  });
+}
+
+/* ---- add colours ---- */
+function openAdd(){
+  let mode="range", q="";
+  const el=sheet('<div style="display:flex;justify-content:space-between;align-items:center">'+
+    '<div class="cav" style="font-size:28px;font-weight:700">Add colours</div><button class="btn" id="addClose">Close</button></div>'+
+    '<div style="display:flex;gap:8px;margin-top:10px">'+
+    '<button class="chip on" id="mRange">From the Promarker range</button>'+
+    '<button class="chip" id="mCustom">Custom</button></div>'+
+    '<div id="addBody"></div>');
+  el.querySelector("#addClose").addEventListener("click", closeModal);
+  const body=el.querySelector("#addBody");
+  const mR=el.querySelector("#mRange"), mC=el.querySelector("#mCustom");
+  function setMode(m){ mode=m; mR.classList.toggle("on",m==="range"); mC.classList.toggle("on",m==="custom"); renderBody(); }
+  mR.addEventListener("click", ()=>setMode("range"));
+  mC.addEventListener("click", ()=>setMode("custom"));
+
+  function renderRangeList(){
+    const listEl=body.querySelector("#rangeList");
+    const ownedSet=new Set(ownedColors().map(c=>c.code));
+    const s=q.trim().toLowerCase();
+    const avail=OFFICIAL.filter(o=>!ownedSet.has(o[0])).filter(o=>!s||o[0].toLowerCase().includes(s)||o[1].toLowerCase().includes(s));
+    const groups=FAMILIES.map(f=>({f, items:avail.filter(o=>o[2]===f)})).filter(g=>g.items.length);
+    listEl.previousElementSibling.textContent=avail.length+" colours available. Tap Add — each goes straight into your collection with an estimated colour you can re-measure any time.";
+    listEl.innerHTML=groups.map(g=>
+      '<section style="margin-top:14px"><div class="cav" style="font-size:21px">'+g.f+"</div>"+
+      g.items.map(o=>'<div class="rangerow"><div class="sw" style="background:'+o[3]+'"></div>'+
+        '<div style="flex:1;min-width:0"><span class="mono" style="font-weight:700;font-size:12.5px">'+escapeHtml(o[0])+'</span>'+
+        '<span style="font-size:12.5px;margin-left:8px">'+escapeHtml(o[1])+"</span></div>"+
+        '<button class="btn" data-add="'+escapeHtml(o[0])+'">Add</button></div>').join("")+"</section>").join("") ||
+      '<p class="sub" style="margin-top:14px">Nothing left to add — you own the entire range. Respect.</p>';
+    listEl.querySelectorAll("[data-add]").forEach(b=> b.addEventListener("click", ()=>{
+      state.owned.push(b.dataset.add); saveState(); toast(b.dataset.add+" added"); renderRangeList(); renderAll();
+    }));
+  }
+  function renderBody(){
+    if(mode==="range"){
+      body.innerHTML='<input class="field" id="rq" placeholder="Search the range…" style="margin-top:12px" value="'+escapeHtml(q)+'">'+
+        '<div class="sub" style="margin-top:8px"></div><div id="rangeList"></div>';
+      const rq=body.querySelector("#rq");
+      rq.addEventListener("input", ()=>{ q=rq.value; renderRangeList(); });
+      renderRangeList();
+    } else {
+      body.innerHTML='<label class="f">Code on the pen<input class="field" id="cCode" placeholder="e.g. a discontinued code"><div class="sub" id="cClash" style="color:#A4442E;display:none;margin-top:3px">That code is already in your collection.</div></label>'+
+        '<label class="f">Colour name<input class="field" id="cName"></label>'+
+        '<label class="f">Family<select class="field" id="cFam">'+FAMILIES.map(f=>"<option>"+f+"</option>").join("")+"</select></label>"+
+        '<div style="display:flex;align-items:center;gap:12px;margin-top:14px"><div class="swx" id="cSw" style="background:#CCCCCC;margin-top:0"></div>'+
+        '<div class="mono" id="cHexTxt" style="flex:1;font-size:13px">#CCCCCC<br>rgb(204, 204, 204)</div>'+
+        '<button class="btn" id="cSample">Sample from photo</button></div>'+
+        '<button class="btn fill" id="cAdd" style="margin-top:18px;width:100%;padding:12px;font-size:15px" disabled>Add to collection</button>';
+      let hx="#CCCCCC";
+      const code=body.querySelector("#cCode"), name=body.querySelector("#cName"), fam=body.querySelector("#cFam");
+      const addB=body.querySelector("#cAdd"), clash=body.querySelector("#cClash");
+      function check(){
+        const cd=code.value.trim().toUpperCase();
+        const dup=ownedColors().some(c=>c.code===cd);
+        clash.style.display=dup?"block":"none";
+        addB.disabled=!(cd&&name.value.trim()&&!dup);
+      }
+      code.addEventListener("input",check); name.addEventListener("input",check);
+      body.querySelector("#cSample").addEventListener("click", ()=>openSampler(code.value.trim().toUpperCase()||"new colour", h=>{
+        hx=h; body.querySelector("#cSw").style.background=h;
+        body.querySelector("#cHexTxt").innerHTML=h+"<br>rgb("+hexToRgb(h).join(", ")+")";
+      }));
+      addB.addEventListener("click", ()=>{
+        state.customs.push({code:code.value.trim().toUpperCase(), name:name.value.trim(), family:fam.value, hex:hx});
+        saveState(); closeModal(); renderAll(); toast("Added");
+      });
+    }
+  }
+  renderBody();
+}
+
+/* ---- photo eyedropper ---- */
+function openSampler(title, cb){
+  const wrap=document.createElement("div");
+  wrap.className="overlay center";
+  wrap.innerHTML='<div class="sheet">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+    '<div style="font-weight:700;font-size:14px">Sample from photo · <span class="mono">'+escapeHtml(title)+'</span></div>'+
+    '<button class="btn" data-x="c">✕</button></div>'+
+    '<label class="droparea" id="drop">Tap to choose or take a photo of your swatch<input type="file" accept="image/*" style="display:none"></label>'+
+    '<canvas style="display:none"></canvas>'+
+    '<div class="sub" id="samphint" style="display:none;margin-top:6px">Tap the photo where the ink shows this many layers. Tap again to re-sample. <label style="text-decoration:underline">Different photo<input type="file" accept="image/*" style="display:none"></label></div>'+
+    '<div id="pickrow" style="display:none;align-items:center;gap:12px;margin-top:12px">'+
+    '<div class="swx" id="pickSw" style="margin-top:0"></div><div class="mono" id="pickTxt" style="flex:1;font-size:13px"></div>'+
+    '<button class="btn fill" id="useBtn" style="padding:9px 14px;font-weight:600">Use this colour</button></div></div>';
+  document.body.appendChild(wrap);
+  const close=()=>wrap.remove();
+  wrap.addEventListener("click", e=>{ if(e.target===wrap) close(); });
+  wrap.querySelector('[data-x="c"]').addEventListener("click", close);
+  const cv=wrap.querySelector("canvas"), ctx=cv.getContext("2d");
+  let picked=null;
+  function loadFile(file){
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{
+      const cap=1600, sc=Math.min(1, cap/Math.max(img.width,img.height));
+      cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc);
+      ctx.drawImage(img,0,0,cv.width,cv.height);
+      cv.style.display="block";
+      wrap.querySelector("#drop").style.display="none";
+      wrap.querySelector("#samphint").style.display="block";
+      URL.revokeObjectURL(url);
+    };
+    img.src=url;
+  }
+  wrap.querySelectorAll('input[type=file]').forEach(inp=> inp.addEventListener("change", e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); }));
+  cv.addEventListener("click", e=>{
+    const rect=cv.getBoundingClientRect();
+    const x=Math.round((e.clientX-rect.left)/rect.width*cv.width);
+    const y=Math.round((e.clientY-rect.top)/rect.height*cv.height);
+    const s=4, x0=Math.max(0,x-s), y0=Math.max(0,y-s);
+    const w=Math.min(cv.width-x0,s*2+1), h=Math.min(cv.height-y0,s*2+1);
+    const d=ctx.getImageData(x0,y0,w,h).data;
+    let r=0,g=0,b=0,n=0;
+    for(let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; }
+    picked=rgbToHex(r/n,g/n,b/n);
+    wrap.querySelector("#pickrow").style.display="flex";
+    wrap.querySelector("#pickSw").style.background=picked;
+    wrap.querySelector("#pickTxt").innerHTML=picked+"<br>rgb("+hexToRgb(picked).join(", ")+")";
+  });
+  wrap.querySelector("#useBtn").addEventListener("click", ()=>{ if(picked){ cb(picked); close(); } });
+}
+
+/* ---- export / import ---- */
+function exportData(){
+  const blob=new Blob([JSON.stringify({app:"promarker-studio",version:1,exported:new Date().toISOString(),data:state},null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="promarker-collection.json";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  toast("Backup downloaded");
+}
+function importData(file){
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const d=JSON.parse(rd.result);
+      const inner=d.data||d;
+      if(!inner||!Array.isArray(inner.owned)) throw 0;
+      if(!confirm("Replace the collection on this device with the backup ("+inner.owned.length+" official + "+(inner.customs||[]).length+" custom colours)?")) return;
+      state={owned:inner.owned||[], overrides:inner.overrides||{}, customs:inner.customs||[]};
+      saveState(); renderAll(); toast("Backup restored");
+    }catch(e){ toast("That file doesn't look like a Promarker Studio backup"); }
+  };
+  rd.readAsText(file);
+}
+
+/* ============ events + boot ============ */
+document.getElementById("addBtn").addEventListener("click", openAdd);
+document.getElementById("search").addEventListener("input", e=>{ ui.q=e.target.value; renderView(); });
+document.querySelectorAll(".tab").forEach(el=> el.addEventListener("click", ()=>{
+  ui.tab=el.dataset.tab;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on", t===el));
+  renderView();
+}));
+renderAll();
+
+if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")){
+  window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+</script>
+</body>
+</html>

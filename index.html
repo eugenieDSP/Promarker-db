@@ -57,9 +57,9 @@
   .layerrow { display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid var(--pencil); }
   .swx { width:44px; height:44px; border:1.5px solid var(--ink); flex-shrink:0; margin-top:2px; }
   .mono { font-family:ui-monospace,Menlo,monospace; }
-  .harmrow { display:flex; gap:8px; overflow-x:auto; padding:6px 0; }
-  .harmchip { background:transparent; border:none; padding:0; text-align:center; flex-shrink:0; width:62px; }
-  .harmchip .sw { height:40px; border:1.5px solid var(--ink); }
+  .harmrow { display:flex; gap:8px; overflow-x:auto; padding:6px 0; align-items:flex-start; }
+  .harmchip { background:transparent; border:none; padding:0; text-align:center; flex-shrink:0; width:62px; display:flex; flex-direction:column; }
+  .harmchip .sw { height:40px; flex-shrink:0; border:1.5px solid var(--ink); }
   .rangerow { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--pencil); }
   .rangerow .sw { width:34px; height:34px; border:1.5px solid var(--ink); flex-shrink:0; }
   .field { width:100%; padding:9px 12px; border:1.4px solid var(--ink); border-radius:10px; background:#fff; margin-top:4px; font-size:14px; }

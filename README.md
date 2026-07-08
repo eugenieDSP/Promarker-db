@@ -8,10 +8,6 @@ Data lives only in this browser on this device. No account, no server, no analyt
 - `index.html` — the whole app, pre-seeded with your collection
 - `manifest.webmanifest`, `sw.js`, `icon-*.png` — installability + offline
 
-## Publish it (pick one)
-**Netlify Drop (easiest):** go to https://app.netlify.com/drop and drag this folder onto the page. You get an HTTPS URL instantly; a free account keeps it up.
-**GitHub Pages:** new public repo → upload these files → Settings → Pages → deploy from `main` / root.
-
 ## Install on your phone
 Open the URL, then:
 - Android (Chrome/Firefox): menu → "Add to Home screen" / "Install app"

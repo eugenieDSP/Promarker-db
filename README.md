@@ -14,8 +14,4 @@ migrate automatically to the new multi-brand format.
 2. Commit; wait 1–2 minutes
 3. On the phone: fully close the app, reopen twice (cache bumped to personal-v5)
 
-Note: your live collection predates the grey seeding, so the 13 greys won't
-auto-appear in your existing data — add them once via Browse (filter Greys,
-Promarker) or Add colours. Fresh installs get them automatically.
-
 Data stays on-device; back up via About → Export. Not affiliated with any marker maker.

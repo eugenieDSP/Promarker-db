@@ -1,23 +1,21 @@
-# My Promarker studio (personal PWA)
+# My Promarker studio (personal edition)
 
-A personal, offline companion for your Winsor & Newton Promarker collection — pre-loaded with your 115 colours. Catalogue markers, measure real swatch colours from photos (1, 2 and 3 ink layers), view a Munsell-style hue–chroma wheel, and find harmonies across the whole range with your owned colours highlighted.
+Eugenie's personal marker companion, now with the full multi-brand feature set:
+Promarker + Copic + Ohuhu + Prismacolor catalogues (943 colours), Browse-all tab,
+wishlist, cross-brand equivalents on every colour, full-range harmonies,
+reverse hex/RGB lookup, Munsell-style wheel, photo swatch measuring.
 
-Data lives only in this browser on this device. No account, no server, no analytics. Back up or move devices via Export/Import in the About tab.
+Pre-seeded with the 128-colour Promarker collection (incl. Warm/Cool/Ice greys)
+on first launch. Existing installations keep their data — old saved collections
+migrate automatically to the new multi-brand format.
 
-## Files
-- `index.html` — the whole app, pre-seeded with your collection
-- `manifest.webmanifest`, `sw.js`, `icon-*.png` — installability + offline
+## Deploying an update over the existing GitHub Pages site
+1. Upload `index.html` and `sw.js` to the Promarker-db repository (overwrite)
+2. Commit; wait 1–2 minutes
+3. On the phone: fully close the app, reopen twice (cache bumped to personal-v5)
 
-## Install on your phone
-Open the URL, then:
-- Android (Chrome/Firefox): menu → "Add to Home screen" / "Install app"
-- iPhone (Safari): share → "Add to Home Screen"
-Works fully offline after the first visit.
+Note: your live collection predates the grey seeding, so the 13 greys won't
+auto-appear in your existing data — add them once via Browse (filter Greys,
+Promarker) or Add colours. Fresh installs get them automatically.
 
-## First launch
-The app seeds your 115 colours once, then leaves your data alone forever after. Anything you add, measure, or remove sticks. "Erase everything" empties it for good (no surprise re-seed).
-
-## Updating later
-Edit `index.html`, bump the cache name in `sw.js` (e.g. `-personal-v2`), redeploy. The cache bump makes your installed copy pick up the new version.
-
-Not affiliated with or endorsed by Winsor & Newton.
+Data stays on-device; back up via About → Export. Not affiliated with any marker maker.

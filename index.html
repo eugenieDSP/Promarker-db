@@ -37,8 +37,9 @@
   .famhead .cav { font-size:24px; }
   .famhead .n { font-size:12px; color:var(--faint); }
   .famhead .rule { flex:1; border-bottom:1px solid var(--pencil); }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(102px,1fr)); gap:12px; }
-  .card { background:transparent; border:none; padding:0; text-align:left; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(102px,1fr)); gap:12px; align-items:start; }
+  .card { background:transparent; border:none; padding:0; text-align:left; display:flex; flex-direction:column; align-self:start; }
+  .card .strip { flex:none; }
   .card:active { transform:translateY(1px); }
   .strip { display:flex; width:100%; height:84px; border:1.6px solid var(--ink); background:#fff; position:relative; }
   .strip > div { flex:1; }
@@ -75,7 +76,7 @@
 </head>
 <body>
 <header>
-  <h1>My Promarker studio</h1>
+  <h1>My Promarker studio <span id="appver" style="font-size:11px;font-family:ui-monospace,monospace;color:#8C8577;font-weight:400;vertical-align:middle"></span></h1>
   <div class="rowsb">
     <div class="sub" id="countline"></div>
     <button class="btn fill" id="addBtn">+ Add colours</button>
@@ -84,6 +85,7 @@
     <button class="tab on" data-tab="collection">Collection</button>
     <button class="tab" data-tab="browse">Browse all</button>
     <button class="tab" data-tab="find">Find</button>
+    <button class="tab" data-tab="wishlist">Wishlist</button>
     <button class="tab" data-tab="wheel">Colour wheel</button>
     <button class="tab" data-tab="about">About</button>
   </div>
@@ -183,6 +185,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<
 
 /* ============ storage: localStorage with in-memory fallback ============ */
 const STORE_KEY="promarker-studio-personal-v1";
+const APP_VERSION="personal-v9";
 const SEED_KEY="promarker-studio-personal-seeded";
 const SEED_OWNED=["Promarker|Y828","Promarker|Y417","Promarker|Y657","Promarker|Y367","Promarker|Y337","Promarker|Y156","Promarker|O739","Promarker|Y428","Promarker|O538","Promarker|O555","Promarker|O567","Promarker|O467","Promarker|O177","Promarker|O148","Promarker|O138","Promarker|R576","Promarker|R666","Promarker|R565","Promarker|R665","Promarker|R244","Promarker|R346","Promarker|R365","Promarker|M865","Promarker|M544","Promarker|M647","Promarker|R866","Promarker|R156","Promarker|R547","Promarker|R729","Promarker|R327","Promarker|R519","Promarker|M419","Promarker|Y119","Promarker|M727","Promarker|V528","Promarker|V518","Promarker|V327","Promarker|V127","Promarker|V735","Promarker|V546","Promarker|V746","Promarker|V524","Promarker|V464","Promarker|V234","Promarker|V264","Promarker|B346","Promarker|B445","Promarker|B624","Promarker|BG05","Promarker|B137","Promarker|B146","Promarker|C429","Promarker|C528","Promarker|B736","Promarker|B336","Promarker|C917","Promarker|B318","Promarker|G917","Promarker|C217","Promarker|G619","Promarker|C426","Promarker|C824","Promarker|C446","Promarker|C247","Promarker|G847","Promarker|G635","Promarker|G756","Promarker|G817","Promarker|G657","Promarker|G457","Promarker|G356","Promarker|G267","Promarker|G338","Promarker|G339","Promarker|G159","Promarker|G178","Promarker|Y334","Promarker|Y524","Promarker|Y923","Promarker|Y717","Promarker|O837","Promarker|O928","Promarker|Y217","Promarker|Y219","Promarker|Y418","Promarker|O819","Promarker|O729","Promarker|O919","Promarker|O518","Promarker|O618","Promarker|O237","Promarker|R937","Promarker|O427","Promarker|O528","Promarker|O829","Promarker|O224","Promarker|O324","Promarker|O423","Promarker|O646","Promarker|O534","Promarker|O523","Promarker|O345","Promarker|O335","Promarker|R946","Promarker|O535","Promarker|O225","Promarker|O124","Promarker|R735","Promarker|R424","Promarker|R215","Promarker|V715","Promarker|R934","Promarker|R738","Promarker|R228","Promarker|Y635","Promarker|WG1","Promarker|WG2","Promarker|WG3","Promarker|WG4","Promarker|WG5","Promarker|CG1","Promarker|CG2","Promarker|CG3","Promarker|CG4","Promarker|CG5","Promarker|IG0","Promarker|IG2","Promarker|IG4"];
 let memoryStore=null;
@@ -229,18 +232,13 @@ function toast(msg){
 /* ============ app state ============ */
 let state=loadState();
 migrateLegacy();
-// One-time seed of the personal collection on first launch
 (function seedIfNeeded(){
   let seeded=false;
   try{ seeded=localStorage.getItem(SEED_KEY)==="1"; }catch(e){ seeded=false; }
   const empty = state.owned.length===0 && state.customs.length===0 && Object.keys(state.overrides).length===0;
-  if(!seeded && empty){
-    state.owned = SEED_OWNED.slice();
-    try{ localStorage.setItem(SEED_KEY,"1"); }catch(e){}
-    saveState();
-  }
+  if(!seeded && empty){ state.owned = SEED_OWNED.slice(); try{ localStorage.setItem(SEED_KEY,"1"); }catch(e){} saveState(); }
 })();
-let ui={ tab:"collection", fam:"All", brand:"All", q:"", wheelLayer:0, findQ:"", findScope:"range", findResult:null, browseBrand:"All", browseFam:"All", browseQ:"" };
+let ui={ tab:"collection", fam:"All", brand:"All", q:"", wheelLayer:0, wheelScope:"owned", wheelBrand:"All", findQ:"", findScope:"range", findResult:null, browseBrand:"All", browseFam:"All", browseQ:"" };
 
 // A colour's identity is its key: "Brand|Code". Legacy saved data stored bare Promarker codes,
 // so migrate those to "Promarker|CODE" on load.
@@ -308,16 +306,16 @@ function stripHtml(layers, measured){
   return '<div class="strip">'+layers.map(h=>'<div style="background:'+h+'"></div>').join("")+
     (measured&&measured.some(Boolean)?'<span class="dot"></span>':"")+"</div>";
 }
+function colourOrder(hex){ const {L,C,H}=hexToLch(hex); return C<8 ? [1,-L,0] : [0,H,-L]; }
+function sortByColour(arr, hexOf){ return arr.sort((x,y)=>{ const a=colourOrder(hexOf(x)), b=colourOrder(hexOf(y)); return a[0]-b[0] || a[1]-b[1] || a[2]-b[2]; }); }
 function renderCollection(){
   const own=ownedColors();
   if(own.length===0){
     view.innerHTML='<div class="empty"><div class="cav">Your marker case is empty</div>'+
       '<p>Add the markers you own from the ranges we include — Promarker and Copic to start — then photograph your own swatches to record how each colour really behaves, in one, two and three layers of ink.</p>'+
-      '<button class="btn fill" id="emptyAdd" style="padding:10px 18px;font-size:15px">Add your first colours</button></div>'+
-      wishlistSectionHtml();
+      '<button class="btn fill" id="emptyAdd" style="padding:10px 18px;font-size:15px">Add your first colours</button></div>';
     const b=document.getElementById("emptyAdd");
     if(b) b.addEventListener("click", openAdd);
-    view.querySelectorAll(".card").forEach(el=> el.addEventListener("click", ()=>openDetail(el.dataset.key)));
     return;
   }
   const q=ui.q.trim().toLowerCase();
@@ -325,7 +323,7 @@ function renderCollection(){
     (ui.fam==="All"||c.family===ui.fam) &&
     (!q || c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)));
   const groups=FAMILIES.filter(f=> ui.fam==="All"||f===ui.fam)
-    .map(f=>({f, items:vis.filter(c=>c.family===f)})).filter(g=>g.items.length);
+    .map(f=>({f, items:sortByColour(vis.filter(c=>c.family===f), c=>layersFor(c).layers[0])})).filter(g=>g.items.length);
   if(!groups.length){ view.innerHTML='<div class="empty"><p>Nothing matches your filters'+(ui.q?' / "'+escapeHtml(ui.q)+'"':"")+'.</p></div>'; return; }
   const multiBrand=ownedBrands().length>1;
   view.innerHTML=groups.map(g=>
@@ -337,7 +335,6 @@ function renderCollection(){
         '<div class="name">'+escapeHtml(c.name)+'</div>'+
         (multiBrand?'<div class="brandtag">'+escapeHtml(c.brand)+'</div>':"")+'</button>';
     }).join("")+"</div></section>").join("")+
-    wishlistSectionHtml()+
     '<p class="hint">Each square shows one, two and three layers of ink. A dot marks colours measured from your own swatch photos; * marks colours you added yourself. Unmeasured colours are estimates.</p>';
   view.querySelectorAll(".card").forEach(el=> el.addEventListener("click", ()=>openDetail(el.dataset.key)));
 }
@@ -356,19 +353,62 @@ function wishlistSectionHtml(){
     }).join("")+"</div>"+
     '<div style="font-size:11px;color:var(--faint);margin-top:6px">Colours you\'re planning to buy. Tap one to open it, add it to your collection once bought, or take it off the list.</div></section>';
 }
+function renderWishlist(){
+  const items=state.wishlist.map(k=>byKey[k]).filter(Boolean);
+  if(!items.length){
+    view.innerHTML='<div class="empty"><div class="cav">Your wishlist is empty</div>'+
+      '<p>Browsing any colour you don\'t own — in Browse all, Find, or a harmony — gives you a ♡ Wishlist button. Pin the ones you\'re thinking of buying and they\'ll gather here, grouped by brand, ready for your next shop.</p>'+
+      '<button class="btn fill" id="wlBrowse" style="padding:10px 18px;font-size:15px">Browse all colours</button></div>';
+    const b=document.getElementById("wlBrowse");
+    if(b) b.addEventListener("click", ()=>{ ui.tab="browse"; document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on", t.dataset.tab==="browse")); renderView(); });
+    return;
+  }
+  // group by brand — a wishlist is essentially a shopping list, so brand grouping is what you want at the till
+  const brands=BRANDS.filter(b=>items.some(o=>o[4]===b)).concat([...new Set(items.map(o=>o[4]))].filter(b=>!BRANDS.includes(b)));
+  let html='<div style="margin-top:14px"><div class="sub">'+items.length+' colour'+(items.length>1?'s':'')+' across '+brands.length+' brand'+(brands.length>1?'s':'')+'</div></div>';
+  html+=brands.map(brand=>{
+    const list=sortByColour(items.filter(o=>o[4]===brand), o=>o[3]);
+    return '<section style="margin-top:18px"><div class="famhead"><span class="cav">'+escapeHtml(brand)+'</span><span class="n">'+list.length+'</span><span class="rule"></span></div>'+
+      '<div class="grid">'+list.map(o=>{
+        const k=keyOf(o[4],o[0]);
+        const est=estimateLayers(o[3]);
+        return '<button class="card" data-key="'+escapeHtml(k)+'">'+
+          '<div class="strip" style="border-style:dashed;border-color:var(--faint)">'+est.map(h=>'<div style="background:'+h+'"></div>').join("")+'</div>'+
+          '<div class="code" style="color:var(--faint)">'+escapeHtml(o[0])+'</div>'+
+          '<div class="name">'+escapeHtml(o[1])+'</div>'+
+          '<div class="brandtag">'+escapeHtml(o[2])+'</div></button>';
+      }).join("")+"</div></section>";
+  }).join("");
+  html+='<p class="hint">Your shopping list, grouped by brand. Tap a colour to see its details and cross-brand matches, add it to your collection once you\'ve bought it, or remove it from the wishlist.</p>';
+  view.innerHTML=html;
+  view.querySelectorAll(".card").forEach(el=> el.addEventListener("click", ()=>openDetail(el.dataset.key)));
+}
 function renderWheel(){
-  const own=ownedColors().filter(c=> ui.brand==="All"||c.brand===ui.brand);
+  const ownedByKey=new Map(ownedColors().map(c=>[c.key,c]));
+  // Build the plotting pool from the chosen scope
+  let pool;
+  if(ui.wheelScope==="owned"){
+    pool=ownedColors().map(c=>({key:c.key, code:c.code, name:c.name, brand:c.brand, hex:layersFor(c).layers[ui.wheelLayer], owned:true}));
+  } else {
+    pool=OFFICIAL.map(o=>{
+      const k=keyOf(o[4],o[0]); const oc=ownedByKey.get(k);
+      return {key:k, code:o[0], name:o[1], brand:o[4], hex: oc?layersFor(oc).layers[ui.wheelLayer]:o[3], owned:!!oc};
+    });
+    ownedColors().filter(c=>c.custom).forEach(c=> pool.push({key:c.key, code:c.code, name:c.name, brand:c.brand, hex:layersFor(c).layers[ui.wheelLayer], owned:true}));
+  }
+  if(ui.wheelBrand!=="All") pool=pool.filter(c=>c.brand===ui.wheelBrand);
   const size=360, cx=180, cy=180, R=146, maxC=75;
-  const dots=own.map(c=>{
-    const hex=layersFor(c).layers[ui.wheelLayer];
-    const {C,H}=hexToLch(hex);
+  const dots=pool.map(c=>{
+    const {C,H}=hexToLch(c.hex);
     const r=Math.min(C/maxC,1)*R;
     const neutral=C<4;
     const hash=[...c.key].reduce((n,ch)=>n+ch.charCodeAt(0)*7,0);
     const a=(neutral ? hash%360 : labHueToMunsellDeg(H)+18)*Math.PI/180;
     const rr=neutral?Math.min(r,8):r;
-    return {c,hex,x:cx+rr*Math.cos(a),y:cy-rr*Math.sin(a)};
+    return {c,hex:c.hex,owned:c.owned,x:cx+rr*Math.cos(a),y:cy-rr*Math.sin(a)};
   });
+  // draw unowned first (underneath), owned on top so your collection stands out
+  dots.sort((a,b)=>a.owned-b.owned);
   let svg='<svg viewBox="0 0 '+size+" "+size+'" style="width:100%;max-width:520px;display:block;margin:8px auto 0">';
   [0.33,0.66,1].forEach(f=>{ svg+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(R*f)+'" fill="none" stroke="#D9D2C4" stroke-dasharray="2 4"/>'; });
   M_SECTORS.forEach((s,i)=>{
@@ -377,18 +417,36 @@ function renderWheel(){
     svg+='<text x="'+(cx+(R+16)*Math.cos(a))+'" y="'+(cy-(R+16)*Math.sin(a))+'" font-size="11" fill="#8C8577" text-anchor="middle" dominant-baseline="middle" font-family="ui-monospace,monospace">5'+s+"</text>";
   });
   dots.forEach(d=>{
-    svg+='<circle cx="'+d.x+'" cy="'+d.y+'" r="8" fill="'+d.hex+'" stroke="#FAF8F2" stroke-width="1.6" style="cursor:pointer" data-key="'+escapeHtml(d.c.key)+'"><title>'+escapeHtml(d.c.code+" "+d.c.name+" ("+d.c.brand+")")+"</title></circle>";
+    // owned: larger, opaque, pale ring. unowned: smaller, semi-transparent, faint ring.
+    const rad=d.owned?8:5;
+    const stroke=d.owned?"#FAF8F2":"#B7AE9E";
+    const sw=d.owned?1.6:1;
+    const op=d.owned?1:0.55;
+    svg+='<circle cx="'+d.x+'" cy="'+d.y+'" r="'+rad+'" fill="'+d.hex+'" fill-opacity="'+op+'" stroke="'+stroke+'" stroke-width="'+sw+'" style="cursor:pointer" data-key="'+escapeHtml(d.c.key)+'"><title>'+escapeHtml(d.c.code+" "+d.c.name+" ("+d.c.brand+")"+(d.owned?"":" — not owned"))+"</title></circle>";
   });
   svg+="</svg>";
+  const ownedCount=dots.filter(d=>d.owned).length;
+  const brandsInScope=BRANDS.filter(b=> (ui.wheelScope==="owned"?ownedBrands():BRANDS).includes(b));
   view.innerHTML=
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">'+
     '<div style="font-size:12px;letter-spacing:1.5px;color:#8C8577">MUNSELL-STYLE PLANE</div>'+
     '<div style="display:flex;gap:6px">'+[0,1,2].map(i=>
       '<button class="chip'+(ui.wheelLayer===i?" on":"")+'" data-layer="'+i+'">'+(i+1)+" layer"+(i?"s":"")+"</button>").join("")+"</div></div>"+
-    (own.length ? svg+'<p style="font-size:12px;color:#8C8577;text-align:center;margin-top:4px">'+own.length+" colours · angle = hue, distance from centre = chroma. Tap a dot to open it.</p>"
-      : '<div class="empty"><p>Add some colours first and they will appear here, arranged by hue and chroma.</p></div>')+
-    '<p class="hint">Positions are approximate Munsell, computed from CIELAB hue and chroma rather than the full renotation tables. Near-neutrals gather at the centre.</p>';
+    '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
+      '<button class="chip'+(ui.wheelScope==="owned"?" on":"")+'" data-wscope="owned">My collection</button>'+
+      '<button class="chip'+(ui.wheelScope==="all"?" on":"")+'" data-wscope="all">All colours</button>'+
+      '<select class="field" id="wheelBrand" style="margin-top:0;width:auto;padding:6px 10px">'+
+        '<option value="All">All brands</option>'+brandsInScope.map(b=>'<option'+(ui.wheelBrand===b?" selected":"")+'>'+escapeHtml(b)+'</option>').join("")+'</select>'+
+    '</div>'+
+    (dots.length ? svg+'<p style="font-size:12px;color:#8C8577;text-align:center;margin-top:4px">'+
+      (ui.wheelScope==="all" ? dots.length+" colours ("+ownedCount+" owned, larger dots)" : ownedCount+" colours")+
+      " · angle = hue, distance from centre = chroma. Tap a dot to open it.</p>"
+      : '<div class="empty"><p>Nothing to plot with these filters.</p></div>')+
+    '<p class="hint">Positions are approximate Munsell, computed from CIELAB hue and chroma. Near-neutrals gather at the centre. In “all colours” mode, small faded dots are colours you don\'t own — handy for spotting where two brands sit almost on top of each other.</p>';
   view.querySelectorAll("[data-layer]").forEach(el=> el.addEventListener("click", ()=>{ ui.wheelLayer=+el.dataset.layer; renderView(); }));
+  view.querySelectorAll("[data-wscope]").forEach(el=> el.addEventListener("click", ()=>{ ui.wheelScope=el.dataset.wscope; renderView(); }));
+  const wb=document.getElementById("wheelBrand");
+  if(wb) wb.addEventListener("change", ()=>{ ui.wheelBrand=wb.value; renderView(); });
   view.querySelectorAll("circle[data-key]").forEach(el=> el.addEventListener("click", ()=>openDetail(el.dataset.key)));
 }
 function nearestMarkers(targetHex, scope){
@@ -431,7 +489,7 @@ function renderBrowse(){
     '<select class="field" id="brFam" style="margin-top:0;flex:1"><option value="All">All colour groups</option>'+FAMILIES.map(f=>'<option'+(ui.browseFam===f?" selected":"")+'>'+f+'</option>').join("")+'</select></div>'+
     '<div class="sub" style="margin-top:8px">'+list.length+' colours · '+list.filter(o=>ownedKeys.has(keyOf(o[4],o[0]))).length+' of them owned</div></div>';
   const groups=FAMILIES.filter(f=>ui.browseFam==="All"||f===ui.browseFam)
-    .map(f=>({f, items:list.filter(o=>o[2]===f)})).filter(g=>g.items.length);
+    .map(f=>({f, items:sortByColour(list.filter(o=>o[2]===f), o=>o[3])})).filter(g=>g.items.length);
   if(!groups.length){ view.innerHTML=html+'<div class="empty"><p>Nothing matches those filters.</p></div>'; bindBrowse(); return; }
   html+=groups.map(g=>
     '<section><div class="famhead"><span class="cav">'+g.f+'</span><span class="n">'+g.items.length+'</span><span class="rule"></span></div>'+
@@ -543,7 +601,7 @@ function renderAbout(){  view.innerHTML='<div class="about">'+
     '<button class="btn danger" id="wipeBtn">Erase everything</button>'+
     '<input type="file" id="importFile" accept="application/json" style="display:none"></div>'+
     '<h2>Accuracy</h2><p>Preloaded colours are estimates — for Copic and especially Ohuhu they should be treated only as a rough starting point (Ohuhu&#39;s own manufacturing varies pen to pen), so measure your own swatches for the truth. Measured colours are only as good as your photo; indirect daylight gives the truest samples. Munsell positions are approximations computed from CIELAB. Not affiliated with or endorsed by Winsor &amp; Newton, Copic, Ohuhu, Prismacolor, or any marker maker; brand and colour names are used only to identify products.</p>'+
-    '</div>';
+    '<p class="mono" style="font-size:11px;color:#8C8577;margin-top:14px">Version: '+APP_VERSION+'</p></div>';
   document.getElementById("exportBtn").addEventListener("click", exportData);
   document.getElementById("importBtn").addEventListener("click", ()=>document.getElementById("importFile").click());
   document.getElementById("importFile").addEventListener("change", e=>{ if(e.target.files[0]) importData(e.target.files[0]); });
@@ -558,6 +616,7 @@ function renderView(){
   if(ui.tab==="collection") renderCollection();
   else if(ui.tab==="browse") renderBrowse();
   else if(ui.tab==="find") renderFind();
+  else if(ui.tab==="wishlist") renderWishlist();
   else if(ui.tab==="wheel") renderWheel();
   else renderAbout();
 }
@@ -774,7 +833,9 @@ function openAdd(){
       body.querySelector("#addFam").addEventListener("change", renderRangeList);
       renderRangeList();
     } else {
-      body.innerHTML='<label class="f">Brand<select class="field" id="cBrand"><option>Custom</option>'+BRANDS.map(b=>"<option>"+escapeHtml(b)+"</option>").join("")+'</select></label>'+
+      const usedBrands=[...new Set(state.customs.map(x=>x.brand))].filter(b=>b&&b!=="Custom"&&!BRANDS.includes(b));
+      body.innerHTML='<label class="f">Brand<select class="field" id="cBrand"><option>Custom</option>'+BRANDS.map(b=>"<option>"+escapeHtml(b)+"</option>").join("")+usedBrands.map(b=>"<option>"+escapeHtml(b)+"</option>").join("")+'<option value="__new">New brand…</option></select></label>'+
+        '<label class="f" id="cBrandNewWrap" style="display:none">Brand name<input class="field" id="cBrandNew" placeholder="e.g. Spectrum Noir"></label>'+
         '<label class="f">Code on the pen<input class="field" id="cCode" placeholder="e.g. a discontinued code"><div class="sub" id="cClash" style="color:#A4442E;display:none;margin-top:3px">That code is already in your collection.</div></label>'+
         '<label class="f">Colour name<input class="field" id="cName"></label>'+
         '<label class="f">Family<select class="field" id="cFam">'+FAMILIES.map(f=>"<option>"+f+"</option>").join("")+"</select></label>"+
@@ -783,22 +844,27 @@ function openAdd(){
         '<button class="btn" id="cSample">Sample from photo</button></div>'+
         '<button class="btn fill" id="cAdd" style="margin-top:18px;width:100%;padding:12px;font-size:15px" disabled>Add to collection</button>';
       let hx="#CCCCCC";
-      const brand=body.querySelector("#cBrand"), code=body.querySelector("#cCode"), name=body.querySelector("#cName"), fam=body.querySelector("#cFam");
+      const brandSel=body.querySelector("#cBrand"), brandNew=body.querySelector("#cBrandNew"), brandNewWrap=body.querySelector("#cBrandNewWrap");
+      const code=body.querySelector("#cCode"), name=body.querySelector("#cName"), fam=body.querySelector("#cFam");
+      function curBrand(){ return brandSel.value==="__new" ? brandNew.value.trim() : brandSel.value; }
       const addB=body.querySelector("#cAdd"), clash=body.querySelector("#cClash");
       function check(){
         const cd=code.value.trim().toUpperCase();
-        const k=keyOf(brand.value, cd);
+        const bnd=curBrand();
+        const k=keyOf(bnd||"Custom", cd);
         const dup=ownedColors().some(c=>c.key===k);
         clash.style.display=dup?"block":"none";
-        addB.disabled=!(cd&&name.value.trim()&&!dup);
+        addB.disabled=!(cd&&name.value.trim()&&bnd&&!dup);
       }
-      brand.addEventListener("change",check); code.addEventListener("input",check); name.addEventListener("input",check);
+      brandSel.addEventListener("change",()=>{ brandNewWrap.style.display = brandSel.value==="__new" ? "block" : "none"; check(); });
+      brandNew.addEventListener("input",check);
+      code.addEventListener("input",check); name.addEventListener("input",check);
       body.querySelector("#cSample").addEventListener("click", ()=>openSampler(code.value.trim().toUpperCase()||"new colour", h=>{
         hx=h; body.querySelector("#cSw").style.background=h;
         body.querySelector("#cHexTxt").innerHTML=h+"<br>rgb("+hexToRgb(h).join(", ")+")";
       }));
       addB.addEventListener("click", ()=>{
-        state.customs.push({code:code.value.trim().toUpperCase(), name:name.value.trim(), family:fam.value, hex:hx, brand:brand.value});
+        state.customs.push({code:code.value.trim().toUpperCase(), name:name.value.trim(), family:fam.value, hex:hx, brand:curBrand()||"Custom"});
         saveState(); closeModal(); renderAll(); toast("Added");
       });
     }
@@ -911,6 +977,7 @@ renderAll();
   document.body.appendChild(bar);
 })();
 
+(function(){ const e=document.getElementById("appver"); if(e) e.textContent=APP_VERSION; })();
 if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")){
   window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
 }

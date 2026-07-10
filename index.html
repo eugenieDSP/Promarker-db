@@ -185,7 +185,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<
 
 /* ============ storage: localStorage with in-memory fallback ============ */
 const STORE_KEY="promarker-studio-personal-v1";
-const APP_VERSION="personal-v9";
+const APP_VERSION="personal-v10";
 const SEED_KEY="promarker-studio-personal-seeded";
 const SEED_OWNED=["Promarker|Y828","Promarker|Y417","Promarker|Y657","Promarker|Y367","Promarker|Y337","Promarker|Y156","Promarker|O739","Promarker|Y428","Promarker|O538","Promarker|O555","Promarker|O567","Promarker|O467","Promarker|O177","Promarker|O148","Promarker|O138","Promarker|R576","Promarker|R666","Promarker|R565","Promarker|R665","Promarker|R244","Promarker|R346","Promarker|R365","Promarker|M865","Promarker|M544","Promarker|M647","Promarker|R866","Promarker|R156","Promarker|R547","Promarker|R729","Promarker|R327","Promarker|R519","Promarker|M419","Promarker|Y119","Promarker|M727","Promarker|V528","Promarker|V518","Promarker|V327","Promarker|V127","Promarker|V735","Promarker|V546","Promarker|V746","Promarker|V524","Promarker|V464","Promarker|V234","Promarker|V264","Promarker|B346","Promarker|B445","Promarker|B624","Promarker|BG05","Promarker|B137","Promarker|B146","Promarker|C429","Promarker|C528","Promarker|B736","Promarker|B336","Promarker|C917","Promarker|B318","Promarker|G917","Promarker|C217","Promarker|G619","Promarker|C426","Promarker|C824","Promarker|C446","Promarker|C247","Promarker|G847","Promarker|G635","Promarker|G756","Promarker|G817","Promarker|G657","Promarker|G457","Promarker|G356","Promarker|G267","Promarker|G338","Promarker|G339","Promarker|G159","Promarker|G178","Promarker|Y334","Promarker|Y524","Promarker|Y923","Promarker|Y717","Promarker|O837","Promarker|O928","Promarker|Y217","Promarker|Y219","Promarker|Y418","Promarker|O819","Promarker|O729","Promarker|O919","Promarker|O518","Promarker|O618","Promarker|O237","Promarker|R937","Promarker|O427","Promarker|O528","Promarker|O829","Promarker|O224","Promarker|O324","Promarker|O423","Promarker|O646","Promarker|O534","Promarker|O523","Promarker|O345","Promarker|O335","Promarker|R946","Promarker|O535","Promarker|O225","Promarker|O124","Promarker|R735","Promarker|R424","Promarker|R215","Promarker|V715","Promarker|R934","Promarker|R738","Promarker|R228","Promarker|Y635","Promarker|WG1","Promarker|WG2","Promarker|WG3","Promarker|WG4","Promarker|WG5","Promarker|CG1","Promarker|CG2","Promarker|CG3","Promarker|CG4","Promarker|CG5","Promarker|IG0","Promarker|IG2","Promarker|IG4"];
 let memoryStore=null;
@@ -592,6 +592,109 @@ function bindFindRows(){
     if(el.dataset.open) el.addEventListener("click", ()=>openDetail(el.dataset.open));
   });
 }
+/* ============ sync (private GitHub Gist) ============ */
+const SYNC_TOKEN_KEY="promarker-sync-token";
+const SYNC_GIST_KEY="promarker-sync-gistid";
+const SYNC_FILENAME="promarker-studio-backup.json";
+function getSyncToken(){ try{ return localStorage.getItem(SYNC_TOKEN_KEY)||""; }catch(e){ return ""; } }
+function getSyncGistId(){ try{ return localStorage.getItem(SYNC_GIST_KEY)||""; }catch(e){ return ""; } }
+function setSyncToken(t){ try{ t?localStorage.setItem(SYNC_TOKEN_KEY,t):localStorage.removeItem(SYNC_TOKEN_KEY); }catch(e){} }
+function setSyncGistId(id){ try{ id?localStorage.setItem(SYNC_GIST_KEY,id):localStorage.removeItem(SYNC_GIST_KEY); }catch(e){} }
+async function ghFetch(url, opts){
+  const token=getSyncToken();
+  const res=await fetch(url, {...opts, headers:{...(opts&&opts.headers||{}), "Authorization":"Bearer "+token, "Accept":"application/vnd.github+json"}});
+  if(!res.ok){
+    let msg="GitHub returned "+res.status;
+    if(res.status===401) msg="That token was rejected — check it's correct and hasn't expired.";
+    if(res.status===404) msg="Gist not found — check the Gist ID, or push first to create one.";
+    throw new Error(msg);
+  }
+  return res.json();
+}
+async function syncPush(){
+  const token=getSyncToken();
+  if(!token) throw new Error("Add a GitHub token first.");
+  const payload={ app:"promarker-studio", version:1, exported:new Date().toISOString(), data:{owned:state.owned, overrides:state.overrides, customs:state.customs, wishlist:state.wishlist} };
+  const body={ description:"Promarker Studio backup — do not edit by hand", public:false,
+    files:{ [SYNC_FILENAME]: { content: JSON.stringify(payload, null, 2) } } };
+  const gistId=getSyncGistId();
+  let result;
+  if(gistId){
+    result=await ghFetch("https://api.github.com/gists/"+gistId, {method:"PATCH", body:JSON.stringify(body)});
+  } else {
+    result=await ghFetch("https://api.github.com/gists", {method:"POST", body:JSON.stringify(body)});
+    setSyncGistId(result.id);
+  }
+  return result;
+}
+async function syncPeek(){
+  const gistId=getSyncGistId();
+  if(!gistId) throw new Error("No Gist ID yet — push once from a device first.");
+  const result=await ghFetch("https://api.github.com/gists/"+gistId, {method:"GET"});
+  const file=result.files&&result.files[SYNC_FILENAME];
+  if(!file) throw new Error("That gist doesn't contain a Promarker Studio backup.");
+  const content=file.truncated ? (await (await fetch(file.raw_url)).text()) : file.content;
+  const parsed=JSON.parse(content);
+  return {updated:result.updated_at, payload:parsed};
+}
+async function syncPull(){
+  const {payload}=await syncPeek();
+  const inner=payload.data||payload;
+  if(!inner||!Array.isArray(inner.owned)) throw new Error("That backup doesn't look valid.");
+  state={owned:inner.owned||[], overrides:inner.overrides||{}, customs:inner.customs||[], wishlist:inner.wishlist||[]};
+  migrateLegacy();
+  saveState(); renderAll();
+}
+function renderSyncBox(){
+  const box=document.getElementById("syncBox");
+  if(!box) return;
+  const token=getSyncToken(), gistId=getSyncGistId();
+  if(!token){
+    box.innerHTML='<p class="sub">No token yet. On GitHub: Settings → Developer settings → '+
+      '<a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">Fine-grained tokens</a> → Generate new token → '+
+      'under Permissions, set <b>Gists</b> to Read and write, leave everything else untouched → generate, then paste it below. '+
+      'Do this once per device.</p>'+
+      '<input class="field" id="syncTokenInput" placeholder="Paste your GitHub token" autocomplete="off" autocapitalize="off" spellcheck="false" type="password">'+
+      '<button class="btn" id="syncSaveToken" style="margin-top:8px">Save token</button>';
+    box.querySelector("#syncSaveToken").addEventListener("click", ()=>{
+      const v=box.querySelector("#syncTokenInput").value.trim();
+      if(!v){ toast("Paste a token first"); return; }
+      setSyncToken(v); toast("Token saved"); renderSyncBox();
+    });
+    return;
+  }
+  box.innerHTML='<div class="sub" style="margin-bottom:8px">Token saved on this device'+(gistId?" · Gist connected":" · not linked to a gist yet")+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    '<button class="btn fill" id="syncPushBtn">Push this device\'s collection</button>'+
+    '<button class="btn" id="syncPullBtn">Pull latest</button>'+
+    '<button class="btn" id="syncForgetBtn">Forget token</button></div>'+
+    '<div id="syncStatus" class="sub" style="margin-top:8px"></div>'+
+    (gistId?'<label class="f" style="margin-top:10px">Gist ID (share this with your other device)<input class="field" id="syncGistIdInput" value="'+escapeHtml(gistId)+'"></label>'
+           :'<label class="f" style="margin-top:10px">Already pushed from another device? Paste its Gist ID here instead of pushing<input class="field" id="syncGistIdInput" placeholder="Gist ID from your other device"></label>');
+  const status=box.querySelector("#syncStatus");
+  box.querySelector("#syncPushBtn").addEventListener("click", async ()=>{
+    status.textContent="Pushing…";
+    try{ await syncPush(); status.textContent="Pushed just now."; toast("Synced to GitHub"); renderSyncBox(); }
+    catch(e){ status.textContent="Couldn't push: "+e.message; }
+  });
+  box.querySelector("#syncPullBtn").addEventListener("click", async ()=>{
+    status.textContent="Checking…";
+    try{
+      const {updated}=await syncPeek();
+      const when=new Date(updated).toLocaleString();
+      if(!confirm("Replace this device's collection with the version last saved "+when+"?")) { status.textContent=""; return; }
+      await syncPull();
+      status.textContent="Pulled the version from "+when+".";
+      toast("Collection updated from sync");
+    }catch(e){ status.textContent="Couldn't pull: "+e.message; }
+  });
+  box.querySelector("#syncForgetBtn").addEventListener("click", ()=>{
+    if(!confirm("Remove the saved token from this device? (Your gist and data are unaffected.)")) return;
+    setSyncToken(""); toast("Token removed"); renderSyncBox();
+  });
+  const gidInput=box.querySelector("#syncGistIdInput");
+  if(gidInput) gidInput.addEventListener("change", ()=>{ setSyncGistId(gidInput.value.trim()); toast("Gist ID saved"); renderSyncBox(); });
+}
 function renderAbout(){  view.innerHTML='<div class="about">'+
     '<h2>What this is</h2><p>Eugenie&#39;s personal marker companion. Track markers across brands, record the real colour of your own swatches (screen charts routinely misrepresent them), see everything on a hue–chroma plane, find harmonies within your collection, and match colours across brands to find substitutes. It currently includes the Promarker, Copic, Ohuhu and Prismacolor Premier ranges, with a custom option for anything else.</p>'+
     '<h2>Your data</h2><p>Everything is stored only in this browser, on this device — no account, no server, no analytics. This edition starts pre-loaded with your Promarker collection (including the greys). If you ever clear your browser data the collection goes with it, so use Export backup now and then.</p>'+
@@ -600,8 +703,11 @@ function renderAbout(){  view.innerHTML='<div class="about">'+
     '<button class="btn" id="importBtn">Import backup</button>'+
     '<button class="btn danger" id="wipeBtn">Erase everything</button>'+
     '<input type="file" id="importFile" accept="application/json" style="display:none"></div>'+
+    '<h2>Sync between your devices</h2><p>Optional. Keep your collection matched across phone and computer using a private GitHub Gist — nothing else about your GitHub account is touched.</p>'+
+    '<div id="syncBox"></div>'+
     '<h2>Accuracy</h2><p>Preloaded colours are estimates — for Copic and especially Ohuhu they should be treated only as a rough starting point (Ohuhu&#39;s own manufacturing varies pen to pen), so measure your own swatches for the truth. Measured colours are only as good as your photo; indirect daylight gives the truest samples. Munsell positions are approximations computed from CIELAB. Not affiliated with or endorsed by Winsor &amp; Newton, Copic, Ohuhu, Prismacolor, or any marker maker; brand and colour names are used only to identify products.</p>'+
     '<p class="mono" style="font-size:11px;color:#8C8577;margin-top:14px">Version: '+APP_VERSION+'</p></div>';
+  renderSyncBox();
   document.getElementById("exportBtn").addEventListener("click", exportData);
   document.getElementById("importBtn").addEventListener("click", ()=>document.getElementById("importFile").click());
   document.getElementById("importFile").addEventListener("change", e=>{ if(e.target.files[0]) importData(e.target.files[0]); });

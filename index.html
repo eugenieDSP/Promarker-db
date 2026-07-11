@@ -187,7 +187,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<
 
 /* ============ storage: localStorage with in-memory fallback ============ */
 const STORE_KEY="promarker-studio-personal-v1";
-const APP_VERSION="personal-1.13.2";
+const APP_VERSION="personal-1.15";
 const SEED_KEY="promarker-studio-personal-seeded";
 const SEED_OWNED=["Promarker|Y828","Promarker|Y417","Promarker|Y657","Promarker|Y367","Promarker|Y337","Promarker|Y156","Promarker|O739","Promarker|Y428","Promarker|O538","Promarker|O555","Promarker|O567","Promarker|O467","Promarker|O177","Promarker|O148","Promarker|O138","Promarker|R576","Promarker|R666","Promarker|R565","Promarker|R665","Promarker|R244","Promarker|R346","Promarker|R365","Promarker|M865","Promarker|M544","Promarker|M647","Promarker|R866","Promarker|R156","Promarker|R547","Promarker|R729","Promarker|R327","Promarker|R519","Promarker|M419","Promarker|Y119","Promarker|M727","Promarker|V528","Promarker|V518","Promarker|V327","Promarker|V127","Promarker|V735","Promarker|V546","Promarker|V746","Promarker|V524","Promarker|V464","Promarker|V234","Promarker|V264","Promarker|B346","Promarker|B445","Promarker|B624","Promarker|BG05","Promarker|B137","Promarker|B146","Promarker|C429","Promarker|C528","Promarker|B736","Promarker|B336","Promarker|C917","Promarker|B318","Promarker|G917","Promarker|C217","Promarker|G619","Promarker|C426","Promarker|C824","Promarker|C446","Promarker|C247","Promarker|G847","Promarker|G635","Promarker|G756","Promarker|G817","Promarker|G657","Promarker|G457","Promarker|G356","Promarker|G267","Promarker|G338","Promarker|G339","Promarker|G159","Promarker|G178","Promarker|Y334","Promarker|Y524","Promarker|Y923","Promarker|Y717","Promarker|O837","Promarker|O928","Promarker|Y217","Promarker|Y219","Promarker|Y418","Promarker|O819","Promarker|O729","Promarker|O919","Promarker|O518","Promarker|O618","Promarker|O237","Promarker|R937","Promarker|O427","Promarker|O528","Promarker|O829","Promarker|O224","Promarker|O324","Promarker|O423","Promarker|O646","Promarker|O534","Promarker|O523","Promarker|O345","Promarker|O335","Promarker|R946","Promarker|O535","Promarker|O225","Promarker|O124","Promarker|R735","Promarker|R424","Promarker|R215","Promarker|V715","Promarker|R934","Promarker|R738","Promarker|R228","Promarker|Y635","Promarker|WG1","Promarker|WG2","Promarker|WG3","Promarker|WG4","Promarker|WG5","Promarker|CG1","Promarker|CG2","Promarker|CG3","Promarker|CG4","Promarker|CG5","Promarker|IG0","Promarker|IG2","Promarker|IG4"];
 let memoryStore=null;
@@ -1151,7 +1151,18 @@ renderAll();
 
 (function(){ const e=document.getElementById("appver"); if(e) e.textContent=APP_VERSION; })();
 if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")){
-  window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js", {updateViaCache:"none"}).then(reg=>{
+      reg.update().catch(()=>{});
+      document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") reg.update().catch(()=>{}); });
+    }).catch(()=>{});
+  });
+  let reloaded=false;
+  navigator.serviceWorker.addEventListener("controllerchange", ()=>{
+    if(reloaded) return;
+    reloaded=true;
+    location.reload();
+  });
 }
 </script>
 </body>

@@ -187,7 +187,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<
 
 /* ============ storage: localStorage with in-memory fallback ============ */
 const STORE_KEY="promarker-studio-personal-v1";
-const APP_VERSION="personal-v15";
+const APP_VERSION="personal-v16";
 const SEED_KEY="promarker-studio-personal-seeded";
 const SEED_OWNED=["Promarker|Y828","Promarker|Y417","Promarker|Y657","Promarker|Y367","Promarker|Y337","Promarker|Y156","Promarker|O739","Promarker|Y428","Promarker|O538","Promarker|O555","Promarker|O567","Promarker|O467","Promarker|O177","Promarker|O148","Promarker|O138","Promarker|R576","Promarker|R666","Promarker|R565","Promarker|R665","Promarker|R244","Promarker|R346","Promarker|R365","Promarker|M865","Promarker|M544","Promarker|M647","Promarker|R866","Promarker|R156","Promarker|R547","Promarker|R729","Promarker|R327","Promarker|R519","Promarker|M419","Promarker|Y119","Promarker|M727","Promarker|V528","Promarker|V518","Promarker|V327","Promarker|V127","Promarker|V735","Promarker|V546","Promarker|V746","Promarker|V524","Promarker|V464","Promarker|V234","Promarker|V264","Promarker|B346","Promarker|B445","Promarker|B624","Promarker|BG05","Promarker|B137","Promarker|B146","Promarker|C429","Promarker|C528","Promarker|B736","Promarker|B336","Promarker|C917","Promarker|B318","Promarker|G917","Promarker|C217","Promarker|G619","Promarker|C426","Promarker|C824","Promarker|C446","Promarker|C247","Promarker|G847","Promarker|G635","Promarker|G756","Promarker|G817","Promarker|G657","Promarker|G457","Promarker|G356","Promarker|G267","Promarker|G338","Promarker|G339","Promarker|G159","Promarker|G178","Promarker|Y334","Promarker|Y524","Promarker|Y923","Promarker|Y717","Promarker|O837","Promarker|O928","Promarker|Y217","Promarker|Y219","Promarker|Y418","Promarker|O819","Promarker|O729","Promarker|O919","Promarker|O518","Promarker|O618","Promarker|O237","Promarker|R937","Promarker|O427","Promarker|O528","Promarker|O829","Promarker|O224","Promarker|O324","Promarker|O423","Promarker|O646","Promarker|O534","Promarker|O523","Promarker|O345","Promarker|O335","Promarker|R946","Promarker|O535","Promarker|O225","Promarker|O124","Promarker|R735","Promarker|R424","Promarker|R215","Promarker|V715","Promarker|R934","Promarker|R738","Promarker|R228","Promarker|Y635","Promarker|WG1","Promarker|WG2","Promarker|WG3","Promarker|WG4","Promarker|WG5","Promarker|CG1","Promarker|CG2","Promarker|CG3","Promarker|CG4","Promarker|CG5","Promarker|IG0","Promarker|IG2","Promarker|IG4"];
 let memoryStore=null;
@@ -607,9 +607,18 @@ async function ghFetch(url, opts){
   const method=(opts&&opts.method)||"GET";
   const headers={...(opts&&opts.headers||{}), "Authorization":"token "+token, "Accept":"application/vnd.github+json"};
   if(method==="POST"||method==="PATCH") headers["Content-Type"]="application/json";
+  // Reads must never come from a cache: GitHub's CDN and the browser will both happily
+  // serve a stale copy of the gist, which makes a fresh push look like it never happened.
+  if(method==="GET"){
+    headers["Cache-Control"]="no-cache, no-store, must-revalidate";
+    headers["Pragma"]="no-cache";
+    headers["If-None-Match"]="";
+    const bust=(url.indexOf("?")>=0?"&":"?")+"_t="+Date.now();
+    url=url+bust;
+  }
   let res;
   try{
-    res=await fetch(url, {...opts, headers});
+    res=await fetch(url, {...opts, headers, cache:"no-store"});
   }catch(e){
     throw new Error("Couldn't reach GitHub at all: "+e.message+" (a network/CORS problem, not your token)");
   }
@@ -652,9 +661,18 @@ async function syncPeek(){
   const result=await ghFetch("https://api.github.com/gists/"+gistId, {method:"GET"});
   const file=result.files&&result.files[SYNC_FILENAME];
   if(!file) throw new Error("That gist doesn't contain a Promarker Studio backup.");
-  const content=file.truncated ? (await (await fetch(file.raw_url)).text()) : file.content;
+  let content;
+  if(file.truncated){
+    const raw=file.raw_url+(file.raw_url.indexOf("?")>=0?"&":"?")+"_t="+Date.now();
+    content=await (await fetch(raw, {cache:"no-store", headers:{"Cache-Control":"no-cache"}})).text();
+  } else {
+    content=file.content;
+  }
   const parsed=JSON.parse(content);
-  return {updated:result.updated_at, payload:parsed};
+  // The payload carries the timestamp written by the device that pushed it. Prefer that over
+  // the gist's own updated_at, which a stale cache can misreport.
+  const stamp=(parsed && parsed.exported) ? parsed.exported : result.updated_at;
+  return {updated:stamp, payload:parsed};
 }
 async function syncPull(){
   const {payload}=await syncPeek();
@@ -695,17 +713,25 @@ function renderSyncBox(){
   const status=box.querySelector("#syncStatus");
   box.querySelector("#syncPushBtn").addEventListener("click", async ()=>{
     status.textContent="Pushing…";
-    try{ await syncPush(); status.textContent="Pushed just now."; toast("Synced to GitHub"); renderSyncBox(); }
+    try{
+      await syncPush();
+      const when=new Date().toLocaleString();
+      status.textContent="Pushed "+state.owned.length+" colours at "+when+". Pull on your other device should now report the same number.";
+      toast("Synced to GitHub");
+    }
     catch(e){ status.textContent="Couldn't push: "+e.message; }
   });
   box.querySelector("#syncPullBtn").addEventListener("click", async ()=>{
     status.textContent="Checking…";
     try{
-      const {updated}=await syncPeek();
+      const {updated, payload}=await syncPeek();
       const when=new Date(updated).toLocaleString();
-      if(!confirm("Replace this device's collection with the version last saved "+when+"?")) { status.textContent=""; return; }
+      const d=(payload && payload.data) || {};
+      const n=(d.owned||[]).length, w=(d.wishlist||[]).length, m=Object.keys(d.overrides||{}).length;
+      const here=state.owned.length;
+      if(!confirm("The backup on GitHub was saved "+when+" and holds "+n+" colours ("+m+" measured, "+w+" wishlisted).\n\nThis device currently has "+here+" colours.\n\nReplace this device's collection with that backup?")) { status.textContent=""; return; }
       await syncPull();
-      status.textContent="Pulled the version from "+when+".";
+      status.textContent="Pulled the version from "+when+" — "+n+" colours.";
       toast("Collection updated from sync");
     }catch(e){ status.textContent="Couldn't pull: "+e.message; }
   });

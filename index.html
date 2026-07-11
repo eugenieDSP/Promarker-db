@@ -187,7 +187,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<
 
 /* ============ storage: localStorage with in-memory fallback ============ */
 const STORE_KEY="promarker-studio-personal-v1";
-const APP_VERSION="personal-v16";
+const APP_VERSION="personal-1.13.2";
 const SEED_KEY="promarker-studio-personal-seeded";
 const SEED_OWNED=["Promarker|Y828","Promarker|Y417","Promarker|Y657","Promarker|Y367","Promarker|Y337","Promarker|Y156","Promarker|O739","Promarker|Y428","Promarker|O538","Promarker|O555","Promarker|O567","Promarker|O467","Promarker|O177","Promarker|O148","Promarker|O138","Promarker|R576","Promarker|R666","Promarker|R565","Promarker|R665","Promarker|R244","Promarker|R346","Promarker|R365","Promarker|M865","Promarker|M544","Promarker|M647","Promarker|R866","Promarker|R156","Promarker|R547","Promarker|R729","Promarker|R327","Promarker|R519","Promarker|M419","Promarker|Y119","Promarker|M727","Promarker|V528","Promarker|V518","Promarker|V327","Promarker|V127","Promarker|V735","Promarker|V546","Promarker|V746","Promarker|V524","Promarker|V464","Promarker|V234","Promarker|V264","Promarker|B346","Promarker|B445","Promarker|B624","Promarker|BG05","Promarker|B137","Promarker|B146","Promarker|C429","Promarker|C528","Promarker|B736","Promarker|B336","Promarker|C917","Promarker|B318","Promarker|G917","Promarker|C217","Promarker|G619","Promarker|C426","Promarker|C824","Promarker|C446","Promarker|C247","Promarker|G847","Promarker|G635","Promarker|G756","Promarker|G817","Promarker|G657","Promarker|G457","Promarker|G356","Promarker|G267","Promarker|G338","Promarker|G339","Promarker|G159","Promarker|G178","Promarker|Y334","Promarker|Y524","Promarker|Y923","Promarker|Y717","Promarker|O837","Promarker|O928","Promarker|Y217","Promarker|Y219","Promarker|Y418","Promarker|O819","Promarker|O729","Promarker|O919","Promarker|O518","Promarker|O618","Promarker|O237","Promarker|R937","Promarker|O427","Promarker|O528","Promarker|O829","Promarker|O224","Promarker|O324","Promarker|O423","Promarker|O646","Promarker|O534","Promarker|O523","Promarker|O345","Promarker|O335","Promarker|R946","Promarker|O535","Promarker|O225","Promarker|O124","Promarker|R735","Promarker|R424","Promarker|R215","Promarker|V715","Promarker|R934","Promarker|R738","Promarker|R228","Promarker|Y635","Promarker|WG1","Promarker|WG2","Promarker|WG3","Promarker|WG4","Promarker|WG5","Promarker|CG1","Promarker|CG2","Promarker|CG3","Promarker|CG4","Promarker|CG5","Promarker|IG0","Promarker|IG2","Promarker|IG4"];
 let memoryStore=null;
@@ -609,10 +609,9 @@ async function ghFetch(url, opts){
   if(method==="POST"||method==="PATCH") headers["Content-Type"]="application/json";
   // Reads must never come from a cache: GitHub's CDN and the browser will both happily
   // serve a stale copy of the gist, which makes a fresh push look like it never happened.
+  // (Do NOT send If-None-Match: it invites a 304 with an empty body, which then fails to parse.)
   if(method==="GET"){
-    headers["Cache-Control"]="no-cache, no-store, must-revalidate";
-    headers["Pragma"]="no-cache";
-    headers["If-None-Match"]="";
+    headers["Cache-Control"]="no-cache";
     const bust=(url.indexOf("?")>=0?"&":"?")+"_t="+Date.now();
     url=url+bust;
   }
@@ -622,9 +621,13 @@ async function ghFetch(url, opts){
   }catch(e){
     throw new Error("Couldn't reach GitHub at all: "+e.message+" (a network/CORS problem, not your token)");
   }
+  // Read the body once, as text, then decide what to do with it. Calling res.json() blind
+  // blows up on empty bodies (304s) and on HTML error pages.
+  const raw=await res.text();
   if(!res.ok){
     let detail="";
-    try{ const b=await res.json(); detail=b&&b.message?" \u2014 GitHub says: \u201c"+b.message+"\u201d":""; }catch(e){}
+    try{ const b=JSON.parse(raw); if(b&&b.message) detail=" \u2014 GitHub says: \u201c"+b.message+"\u201d"; }
+    catch(e){ if(raw) detail=" \u2014 GitHub said: "+raw.slice(0,120); }
     let msg="GitHub returned "+res.status+detail;
     if(res.status===401) msg="401 Unauthorized"+detail+". The token isn\u2019t being accepted \u2014 it must be a classic token with the gist scope.";
     if(res.status===403) msg="403 Forbidden"+detail+". The token is recognised but not allowed to do this \u2014 usually a missing gist scope.";
@@ -632,7 +635,12 @@ async function ghFetch(url, opts){
     if(res.status===422) msg="422"+detail+". GitHub rejected the data being sent.";
     throw new Error(msg);
   }
-  return res.json();
+  if(!raw) throw new Error("GitHub returned an empty response (status "+res.status+"). Try again.");
+  try{
+    return JSON.parse(raw);
+  }catch(e){
+    throw new Error("GitHub didn\u2019t return valid JSON (status "+res.status+"): "+raw.slice(0,120));
+  }
 }
 async function syncTestToken(){
   // Simplest possible authenticated call: who am I? Isolates auth problems from gist problems.

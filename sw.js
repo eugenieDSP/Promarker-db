@@ -1,4 +1,4 @@
-const CACHE = "promarker-studio-personal-1-15";
+const CACHE = "promarker-studio-personal-1-15-1";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -11,6 +11,12 @@ self.addEventListener("activate", (e) => {
 });
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+  // Only ever handle requests to this app itself. Anything cross-origin (the GitHub API,
+  // fonts loaded from a CDN, etc.) must go straight to the network, untouched — intercepting
+  // it here and letting the catch-all fallback fire on any hiccup would silently swap a real
+  // API response for this app's own cached HTML, which is exactly the kind of bug that makes
+  // "JSON.parse failed" errors look like someone else's fault.
+  if (new URL(e.request.url).origin !== self.location.origin) return;
   const isNav = e.request.mode === "navigate" || e.request.url.endsWith("/index.html") || e.request.url.endsWith("/");
   if (isNav) {
     // Network-first for the app shell itself: always try to get the latest version;

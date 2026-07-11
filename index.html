@@ -24,13 +24,15 @@
   .btn { border:1.5px solid var(--ink); background:transparent; color:var(--ink); border-radius:8px; padding:6px 12px; font-size:13px; }
   .btn.fill { background:var(--ink); color:var(--paper); }
   .btn.danger { border-color:var(--danger); color:var(--danger); }
-  .tabs { display:flex; gap:18px; margin-top:12px; }
-  .tab { background:none; border:none; padding:6px 2px 10px; font-size:14.5px; color:var(--faint); border-bottom:3px solid transparent; }
+  .tabs { display:flex; gap:18px; margin-top:12px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .tabs::-webkit-scrollbar { display:none; }
+  .tab { flex:0 0 auto; background:none; border:none; padding:6px 2px 10px; font-size:14.5px; color:var(--faint); border-bottom:3px solid transparent; white-space:nowrap; }
   .tab.on { color:var(--ink); font-weight:700; border-bottom-color:var(--ink); }
   .controls { padding:12px 16px 4px; position:sticky; top:0; background:var(--paper); z-index:5; border-bottom:1px solid var(--pencil); }
   .search { width:100%; padding:9px 12px; border:1.4px solid var(--ink); border-radius:10px; background:#fff; outline:none; font-size:14px; }
-  .chips { display:flex; gap:8px; overflow-x:auto; padding:10px 0; scrollbar-width:none; }
-  .chip { border:1.4px solid var(--ink); background:transparent; color:var(--ink); padding:5px 12px; border-radius:999px; font-size:13px; white-space:nowrap; }
+  .chips { display:flex; gap:8px; overflow-x:auto; padding:10px 0; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .chips::-webkit-scrollbar { display:none; }
+  .chip { flex:0 0 auto; border:1.4px solid var(--ink); background:transparent; color:var(--ink); padding:5px 12px; border-radius:999px; font-size:13px; white-space:nowrap; }
   .chip.on { background:var(--ink); color:var(--paper); }
   main { padding:8px 16px 90px; }
   .famhead { display:flex; align-items:baseline; gap:8px; margin:18px 0 10px; }
@@ -185,7 +187,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<
 
 /* ============ storage: localStorage with in-memory fallback ============ */
 const STORE_KEY="promarker-studio-personal-v1";
-const APP_VERSION="personal-v12";
+const APP_VERSION="personal-v14";
 const SEED_KEY="promarker-studio-personal-seeded";
 const SEED_OWNED=["Promarker|Y828","Promarker|Y417","Promarker|Y657","Promarker|Y367","Promarker|Y337","Promarker|Y156","Promarker|O739","Promarker|Y428","Promarker|O538","Promarker|O555","Promarker|O567","Promarker|O467","Promarker|O177","Promarker|O148","Promarker|O138","Promarker|R576","Promarker|R666","Promarker|R565","Promarker|R665","Promarker|R244","Promarker|R346","Promarker|R365","Promarker|M865","Promarker|M544","Promarker|M647","Promarker|R866","Promarker|R156","Promarker|R547","Promarker|R729","Promarker|R327","Promarker|R519","Promarker|M419","Promarker|Y119","Promarker|M727","Promarker|V528","Promarker|V518","Promarker|V327","Promarker|V127","Promarker|V735","Promarker|V546","Promarker|V746","Promarker|V524","Promarker|V464","Promarker|V234","Promarker|V264","Promarker|B346","Promarker|B445","Promarker|B624","Promarker|BG05","Promarker|B137","Promarker|B146","Promarker|C429","Promarker|C528","Promarker|B736","Promarker|B336","Promarker|C917","Promarker|B318","Promarker|G917","Promarker|C217","Promarker|G619","Promarker|C426","Promarker|C824","Promarker|C446","Promarker|C247","Promarker|G847","Promarker|G635","Promarker|G756","Promarker|G817","Promarker|G657","Promarker|G457","Promarker|G356","Promarker|G267","Promarker|G338","Promarker|G339","Promarker|G159","Promarker|G178","Promarker|Y334","Promarker|Y524","Promarker|Y923","Promarker|Y717","Promarker|O837","Promarker|O928","Promarker|Y217","Promarker|Y219","Promarker|Y418","Promarker|O819","Promarker|O729","Promarker|O919","Promarker|O518","Promarker|O618","Promarker|O237","Promarker|R937","Promarker|O427","Promarker|O528","Promarker|O829","Promarker|O224","Promarker|O324","Promarker|O423","Promarker|O646","Promarker|O534","Promarker|O523","Promarker|O345","Promarker|O335","Promarker|R946","Promarker|O535","Promarker|O225","Promarker|O124","Promarker|R735","Promarker|R424","Promarker|R215","Promarker|V715","Promarker|R934","Promarker|R738","Promarker|R228","Promarker|Y635","Promarker|WG1","Promarker|WG2","Promarker|WG3","Promarker|WG4","Promarker|WG5","Promarker|CG1","Promarker|CG2","Promarker|CG3","Promarker|CG4","Promarker|CG5","Promarker|IG0","Promarker|IG2","Promarker|IG4"];
 let memoryStore=null;
@@ -602,15 +604,31 @@ function setSyncToken(t){ try{ t?localStorage.setItem(SYNC_TOKEN_KEY,t):localSto
 function setSyncGistId(id){ try{ id?localStorage.setItem(SYNC_GIST_KEY,id):localStorage.removeItem(SYNC_GIST_KEY); }catch(e){} }
 async function ghFetch(url, opts){
   const token=getSyncToken();
-  const res=await fetch(url, {...opts, headers:{...(opts&&opts.headers||{}), "Authorization":"token "+token, "Accept":"application/vnd.github+json"}});
+  const method=(opts&&opts.method)||"GET";
+  const headers={...(opts&&opts.headers||{}), "Authorization":"token "+token, "Accept":"application/vnd.github+json"};
+  if(method==="POST"||method==="PATCH") headers["Content-Type"]="application/json";
+  let res;
+  try{
+    res=await fetch(url, {...opts, headers});
+  }catch(e){
+    throw new Error("Couldn't reach GitHub at all: "+e.message+" (a network/CORS problem, not your token)");
+  }
   if(!res.ok){
-    let msg="GitHub returned "+res.status;
-    if(res.status===401) msg="That token was rejected. Check: it's a classic token (not fine-grained), the gist scope is checked, it hasn't expired, and it was copied in full with no missing characters.";
-    if(res.status===403) msg="GitHub blocked this — often a token without the gist scope checked, even if the token itself is valid.";
-    if(res.status===404) msg="Gist not found — check the Gist ID, or push first to create one.";
+    let detail="";
+    try{ const b=await res.json(); detail=b&&b.message?" \u2014 GitHub says: \u201c"+b.message+"\u201d":""; }catch(e){}
+    let msg="GitHub returned "+res.status+detail;
+    if(res.status===401) msg="401 Unauthorized"+detail+". The token isn\u2019t being accepted \u2014 it must be a classic token with the gist scope.";
+    if(res.status===403) msg="403 Forbidden"+detail+". The token is recognised but not allowed to do this \u2014 usually a missing gist scope.";
+    if(res.status===404) msg="404 Not Found"+detail+". Check the Gist ID, or push first to create one.";
+    if(res.status===422) msg="422"+detail+". GitHub rejected the data being sent.";
     throw new Error(msg);
   }
   return res.json();
+}
+async function syncTestToken(){
+  // Simplest possible authenticated call: who am I? Isolates auth problems from gist problems.
+  const u=await ghFetch("https://api.github.com/user", {method:"GET"});
+  return u.login;
 }
 async function syncPush(){
   const token=getSyncToken();
@@ -669,6 +687,7 @@ function renderSyncBox(){
     '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
     '<button class="btn fill" id="syncPushBtn">Push this device\'s collection</button>'+
     '<button class="btn" id="syncPullBtn">Pull latest</button>'+
+    '<button class="btn" id="syncTestBtn">Test token</button>'+
     '<button class="btn" id="syncForgetBtn">Forget token</button></div>'+
     '<div id="syncStatus" class="sub" style="margin-top:8px"></div>'+
     (gistId?'<label class="f" style="margin-top:10px">Gist ID (share this with your other device)<input class="field" id="syncGistIdInput" value="'+escapeHtml(gistId)+'"></label>'
@@ -689,6 +708,13 @@ function renderSyncBox(){
       status.textContent="Pulled the version from "+when+".";
       toast("Collection updated from sync");
     }catch(e){ status.textContent="Couldn't pull: "+e.message; }
+  });
+  box.querySelector("#syncTestBtn").addEventListener("click", async ()=>{
+    status.textContent="Testing the token\u2026";
+    try{
+      const who=await syncTestToken();
+      status.textContent="Token works \u2014 authenticated as "+who+". (So if Push still fails, the problem is the gist scope specifically, not the token.)";
+    }catch(e){ status.textContent="Test failed: "+e.message; }
   });
   box.querySelector("#syncForgetBtn").addEventListener("click", ()=>{
     if(!confirm("Remove the saved token from this device? (Your gist and data are unaffected.)")) return;

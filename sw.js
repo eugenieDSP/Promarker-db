@@ -1,4 +1,4 @@
-const CACHE = "promarker-studio-personal-1-15-2";
+const CACHE = "promarker-studio-personal-1-17";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", (e) => {

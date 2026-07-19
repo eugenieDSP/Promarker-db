@@ -199,7 +199,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<
 
 /* ============ storage: localStorage with in-memory fallback ============ */
 const STORE_KEY="promarker-studio-personal-v1";
-const APP_VERSION="personal-1.17";
+const APP_VERSION="personal-1.18";
 const SEED_KEY="promarker-studio-personal-seeded";
 const SEED_OWNED=["Promarker|Y828","Promarker|Y417","Promarker|Y657","Promarker|Y367","Promarker|Y337","Promarker|Y156","Promarker|O739","Promarker|Y428","Promarker|O538","Promarker|O555","Promarker|O567","Promarker|O467","Promarker|O177","Promarker|O148","Promarker|O138","Promarker|R576","Promarker|R666","Promarker|R565","Promarker|R665","Promarker|R244","Promarker|R346","Promarker|R365","Promarker|M865","Promarker|M544","Promarker|M647","Promarker|R866","Promarker|R156","Promarker|R547","Promarker|R729","Promarker|R327","Promarker|R519","Promarker|M419","Promarker|Y119","Promarker|M727","Promarker|V528","Promarker|V518","Promarker|V327","Promarker|V127","Promarker|V735","Promarker|V546","Promarker|V746","Promarker|V524","Promarker|V464","Promarker|V234","Promarker|V264","Promarker|B346","Promarker|B445","Promarker|B624","Promarker|BG05","Promarker|B137","Promarker|B146","Promarker|C429","Promarker|C528","Promarker|B736","Promarker|B336","Promarker|C917","Promarker|B318","Promarker|G917","Promarker|C217","Promarker|G619","Promarker|C426","Promarker|C824","Promarker|C446","Promarker|C247","Promarker|G847","Promarker|G635","Promarker|G756","Promarker|G817","Promarker|G657","Promarker|G457","Promarker|G356","Promarker|G267","Promarker|G338","Promarker|G339","Promarker|G159","Promarker|G178","Promarker|Y334","Promarker|Y524","Promarker|Y923","Promarker|Y717","Promarker|O837","Promarker|O928","Promarker|Y217","Promarker|Y219","Promarker|Y418","Promarker|O819","Promarker|O729","Promarker|O919","Promarker|O518","Promarker|O618","Promarker|O237","Promarker|R937","Promarker|O427","Promarker|O528","Promarker|O829","Promarker|O224","Promarker|O324","Promarker|O423","Promarker|O646","Promarker|O534","Promarker|O523","Promarker|O345","Promarker|O335","Promarker|R946","Promarker|O535","Promarker|O225","Promarker|O124","Promarker|R735","Promarker|R424","Promarker|R215","Promarker|V715","Promarker|R934","Promarker|R738","Promarker|R228","Promarker|Y635","Promarker|WG1","Promarker|WG2","Promarker|WG3","Promarker|WG4","Promarker|WG5","Promarker|CG1","Promarker|CG2","Promarker|CG3","Promarker|CG4","Promarker|CG5","Promarker|IG0","Promarker|IG2","Promarker|IG4"];
 let memoryStore=null;
@@ -252,7 +252,7 @@ migrateLegacy();
   const empty = state.owned.length===0 && state.customs.length===0 && Object.keys(state.overrides).length===0;
   if(!seeded && empty){ state.owned = SEED_OWNED.slice(); try{ localStorage.setItem(SEED_KEY,"1"); }catch(e){} saveState(); }
 })();
-let ui={ tab:"collection", fam:"All", brand:"All", q:"", wheelLayer:0, wheelScope:"owned", wheelBrand:"All", findQ:"", findScope:"range", findResult:null, browseBrand:"All", browseFam:"All", browseQ:"" };
+let ui={ tab:"collection", fam:"All", brand:"All", q:"", wheelLayer:0, wheelScope:"owned", wheelBrand:"All", wheelView:"hue", findQ:"", findScope:"range", findResult:null, browseBrand:"All", browseFam:"All", browseQ:"" };
 
 // A colour's identity is its key: "Brand|Code". Legacy saved data stored bare Promarker codes,
 // so migrate those to "Promarker|CODE" on load.
@@ -397,9 +397,26 @@ function renderWishlist(){
   view.innerHTML=html;
   view.querySelectorAll(".card").forEach(el=> el.addEventListener("click", ()=>openDetail(el.dataset.key)));
 }
+// ---- PCCS (Practical Color Co-ordinate System), approximate mapping from CIELAB ----
+const PCCS_HUE_LETTERS = [null,"pR","R","yR","rO","O","yO","rY","Y","gY","YG","yG","G","bG","BG","gB","gB","B","B","pB","V","bP","P","rP","RP"];
+function pccsOf(hex){
+  const {L,C,H}=hexToLch(hex);
+  if(C<6){
+    const g = L>=90?"W": L>=65?"ltGy": L>=40?"mGy": L>=20?"dkGy":"Bk";
+    return {notation:g, tone:g, hueN:null, achromatic:true, L, C};
+  }
+  const deg=labHueToMunsellDeg(H);
+  const hueN=((Math.round(deg/15)+1)%24)+1;
+  let tone;
+  if(C<18)      tone = L>=75?"p"  : L>=55?"ltg": L>=30?"g" : "dkg";
+  else if(C<38) tone = L>=70?"lt" : L>=55?"sf" : L>=35?"d" : "dk";
+  else if(C<55) tone = L>=65?"b"  : L>=45?"s"  : "dp";
+  else          tone = "v";
+  return {notation:tone+hueN, tone, hueN, hueName:PCCS_HUE_LETTERS[hueN], achromatic:false, L, C};
+}
+const PCCS_TONE_NAMES = {p:"pale",ltg:"light grayish",g:"grayish",dkg:"dark grayish",lt:"light",sf:"soft",d:"dull",dk:"dark",b:"bright",s:"strong",dp:"deep",v:"vivid",W:"white",ltGy:"light grey",mGy:"medium grey",dkGy:"dark grey",Bk:"black"};
 function renderWheel(){
   const ownedByKey=new Map(ownedColors().map(c=>[c.key,c]));
-  // Build the plotting pool from the chosen scope
   let pool;
   if(ui.wheelScope==="owned"){
     pool=ownedColors().map(c=>({key:c.key, code:c.code, name:c.name, brand:c.brand, hex:layersFor(c).layers[ui.wheelLayer], owned:true}));
@@ -411,39 +428,75 @@ function renderWheel(){
     ownedColors().filter(c=>c.custom).forEach(c=> pool.push({key:c.key, code:c.code, name:c.name, brand:c.brand, hex:layersFor(c).layers[ui.wheelLayer], owned:true}));
   }
   if(ui.wheelBrand!=="All") pool=pool.filter(c=>c.brand===ui.wheelBrand);
-  const size=360, cx=180, cy=180, R=146, maxC=75;
-  const dots=pool.map(c=>{
-    const {C,H}=hexToLch(c.hex);
-    const r=Math.min(C/maxC,1)*R;
-    const neutral=C<4;
-    const hash=[...c.key].reduce((n,ch)=>n+ch.charCodeAt(0)*7,0);
-    const a=(neutral ? hash%360 : labHueToMunsellDeg(H)+18)*Math.PI/180;
-    const rr=neutral?Math.min(r,8):r;
-    return {c,hex:c.hex,owned:c.owned,x:cx+rr*Math.cos(a),y:cy-rr*Math.sin(a)};
-  });
-  // draw unowned first (underneath), owned on top so your collection stands out
-  dots.sort((a,b)=>a.owned-b.owned);
-  let svg='<svg viewBox="0 0 '+size+" "+size+'" style="width:100%;max-width:520px;display:block;margin:8px auto 0">';
-  [0.33,0.66,1].forEach(f=>{ svg+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(R*f)+'" fill="none" stroke="#D9D2C4" stroke-dasharray="2 4"/>'; });
-  M_SECTORS.forEach((s,i)=>{
-    const a=(i*36+18)*Math.PI/180;
-    svg+='<line x1="'+(cx+10*Math.cos(a))+'" y1="'+(cy-10*Math.sin(a))+'" x2="'+(cx+R*Math.cos(a))+'" y2="'+(cy-R*Math.sin(a))+'" stroke="#D9D2C4" stroke-dasharray="2 4"/>';
-    svg+='<text x="'+(cx+(R+16)*Math.cos(a))+'" y="'+(cy-(R+16)*Math.sin(a))+'" font-size="11" fill="#8C8577" text-anchor="middle" dominant-baseline="middle" font-family="ui-monospace,monospace">5'+s+"</text>";
-  });
-  dots.forEach(d=>{
-    // owned: larger, opaque, pale ring. unowned: smaller, semi-transparent, faint ring.
-    const rad=d.owned?8:5;
-    const stroke=d.owned?"#FAF8F2":"#B7AE9E";
-    const sw=d.owned?1.6:1;
-    const op=d.owned?1:0.55;
-    svg+='<circle cx="'+d.x+'" cy="'+d.y+'" r="'+rad+'" fill="'+d.hex+'" fill-opacity="'+op+'" stroke="'+stroke+'" stroke-width="'+sw+'" style="cursor:pointer" data-key="'+escapeHtml(d.c.key)+'"><title>'+escapeHtml(d.c.code+" "+d.c.name+" ("+d.c.brand+")"+(d.owned?"":" — not owned"))+"</title></circle>";
-  });
-  svg+="</svg>";
-  const ownedCount=dots.filter(d=>d.owned).length;
+
+  let svg, caption;
+  const ownedCount=pool.filter(c=>c.owned).length;
+  if(ui.wheelView==="pccs"){
+    // ---- PCCS tone map: x = chroma (saturation), y = lightness ----
+    const Wd=380, Hd=300, mx=34, my=20, plotW=Wd-mx-12, plotH=Hd-my-26;
+    const maxC=70;
+    const X=(C)=> mx + Math.min(C/maxC,1)*plotW;
+    const Y=(L)=> my + (1 - L/100)*plotH;
+    svg='<svg viewBox="0 0 '+Wd+" "+Hd+'" style="width:100%;max-width:560px;display:block;margin:8px auto 0">';
+    // tone-column boundaries at C = 6, 18, 38, 55
+    [6,18,38,55].forEach(c=>{ svg+='<line x1="'+X(c)+'" y1="'+my+'" x2="'+X(c)+'" y2="'+(my+plotH)+'" stroke="#D9D2C4" stroke-dasharray="2 4"/>'; });
+    // lightness gridlines
+    [25,50,75].forEach(l=>{ svg+='<line x1="'+mx+'" y1="'+Y(l)+'" x2="'+(mx+plotW)+'" y2="'+Y(l)+'" stroke="#EDE8DC" stroke-dasharray="2 4"/>'; });
+    // axes labels
+    svg+='<text x="'+(mx-6)+'" y="'+Y(95)+'" font-size="9" fill="#8C8577" text-anchor="end">light</text>';
+    svg+='<text x="'+(mx-6)+'" y="'+Y(8)+'" font-size="9" fill="#8C8577" text-anchor="end">dark</text>';
+    svg+='<text x="'+(mx+plotW)+'" y="'+(my+plotH+16)+'" font-size="9" fill="#8C8577" text-anchor="end">saturated →</text>';
+    // tone region labels (approximate cell centres)
+    const lab=(cx,l,t)=> '<text x="'+X(cx)+'" y="'+Y(l)+'" font-size="10" fill="#B7AE9E" text-anchor="middle" font-family="ui-monospace,monospace">'+t+'</text>';
+    svg+=lab(12,82,"p")+lab(12,63,"ltg")+lab(12,43,"g")+lab(12,18,"dkg");
+    svg+=lab(28,79,"lt")+lab(28,62,"sf")+lab(28,45,"d")+lab(28,20,"dk");
+    svg+=lab(46,72,"b")+lab(46,55,"s")+lab(46,32,"dp");
+    svg+=lab(62,55,"v");
+    const dots=pool.map(d=>({...d, lch:hexToLch(d.hex)})).sort((a,b)=>a.owned-b.owned);
+    dots.forEach(d=>{
+      const rad=d.owned?7:4.5, op=d.owned?1:0.5;
+      const stroke=d.owned?"#FAF8F2":"#B7AE9E";
+      svg+='<circle cx="'+X(d.lch.C)+'" cy="'+Y(d.lch.L)+'" r="'+rad+'" fill="'+d.hex+'" fill-opacity="'+op+'" stroke="'+stroke+'" stroke-width="'+(d.owned?1.5:1)+'" style="cursor:pointer" data-key="'+escapeHtml(d.key)+'"><title>'+escapeHtml(d.code+" "+d.name+" ("+d.brand+") — PCCS "+pccsOf(d.hex).notation)+"</title></circle>";
+    });
+    svg+="</svg>";
+    caption = (ui.wheelScope==="all" ? pool.length+" colours ("+ownedCount+" owned, larger dots)" : ownedCount+" colours")+
+      " · up = lighter, right = more saturated. Letters mark PCCS tone regions (v vivid, b bright, s strong, dp deep, lt light, sf soft, d dull, dk dark, p pale, ltg/g/dkg grayish). Tap a dot to open it.";
+  } else {
+    const size=360, cx=180, cy=180, R=146, maxC=75;
+    const dots=pool.map(c=>{
+      const {C,H}=hexToLch(c.hex);
+      const r=Math.min(C/maxC,1)*R;
+      const neutral=C<4;
+      const hash=[...c.key].reduce((n,ch)=>n+ch.charCodeAt(0)*7,0);
+      const a=(neutral ? hash%360 : labHueToMunsellDeg(H)+18)*Math.PI/180;
+      const rr=neutral?Math.min(r,8):r;
+      return {c,hex:c.hex,owned:c.owned,x:cx+rr*Math.cos(a),y:cy-rr*Math.sin(a)};
+    });
+    dots.sort((a,b)=>a.owned-b.owned);
+    svg='<svg viewBox="0 0 '+size+" "+size+'" style="width:100%;max-width:520px;display:block;margin:8px auto 0">';
+    [0.33,0.66,1].forEach(f=>{ svg+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(R*f)+'" fill="none" stroke="#D9D2C4" stroke-dasharray="2 4"/>'; });
+    M_SECTORS.forEach((s,i)=>{
+      const a=(i*36+18)*Math.PI/180;
+      svg+='<line x1="'+(cx+10*Math.cos(a))+'" y1="'+(cy-10*Math.sin(a))+'" x2="'+(cx+R*Math.cos(a))+'" y2="'+(cy-R*Math.sin(a))+'" stroke="#D9D2C4" stroke-dasharray="2 4"/>';
+      svg+='<text x="'+(cx+(R+16)*Math.cos(a))+'" y="'+(cy-(R+16)*Math.sin(a))+'" font-size="11" fill="#8C8577" text-anchor="middle" dominant-baseline="middle" font-family="ui-monospace,monospace">5'+s+"</text>";
+    });
+    dots.forEach(d=>{
+      const rad=d.owned?8:5;
+      const stroke=d.owned?"#FAF8F2":"#B7AE9E";
+      const sw=d.owned?1.6:1;
+      const op=d.owned?1:0.55;
+      svg+='<circle cx="'+d.x+'" cy="'+d.y+'" r="'+rad+'" fill="'+d.hex+'" fill-opacity="'+op+'" stroke="'+stroke+'" stroke-width="'+sw+'" style="cursor:pointer" data-key="'+escapeHtml(d.c.key)+'"><title>'+escapeHtml(d.c.code+" "+d.c.name+" ("+d.c.brand+")"+(d.owned?"":" — not owned"))+"</title></circle>";
+    });
+    svg+="</svg>";
+    caption = (ui.wheelScope==="all" ? pool.length+" colours ("+ownedCount+" owned, larger dots)" : ownedCount+" colours")+
+      " · angle = hue, distance from centre = chroma. Tap a dot to open it.";
+  }
   const brandsInScope=BRANDS.filter(b=> (ui.wheelScope==="owned"?ownedBrands():BRANDS).includes(b));
   view.innerHTML=
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">'+
-    '<div style="font-size:12px;letter-spacing:1.5px;color:#8C8577">MUNSELL-STYLE PLANE</div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:6px">'+
+    '<div style="display:flex;gap:6px">'+
+      '<button class="chip'+(ui.wheelView!=="pccs"?" on":"")+'" data-wview="hue">Hue wheel</button>'+
+      '<button class="chip'+(ui.wheelView==="pccs"?" on":"")+'" data-wview="pccs">PCCS tone map</button></div>'+
     '<div style="display:flex;gap:6px">'+[0,1,2].map(i=>
       '<button class="chip'+(ui.wheelLayer===i?" on":"")+'" data-layer="'+i+'">'+(i+1)+" layer"+(i?"s":"")+"</button>").join("")+"</div></div>"+
     '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
@@ -452,13 +505,14 @@ function renderWheel(){
       '<select class="field" id="wheelBrand" style="margin-top:0;width:auto;padding:6px 10px">'+
         '<option value="All">All brands</option>'+brandsInScope.map(b=>'<option'+(ui.wheelBrand===b?" selected":"")+'>'+escapeHtml(b)+'</option>').join("")+'</select>'+
     '</div>'+
-    (dots.length ? svg+'<p style="font-size:12px;color:#8C8577;text-align:center;margin-top:4px">'+
-      (ui.wheelScope==="all" ? dots.length+" colours ("+ownedCount+" owned, larger dots)" : ownedCount+" colours")+
-      " · angle = hue, distance from centre = chroma. Tap a dot to open it.</p>"
+    (pool.length ? svg+'<p style="font-size:12px;color:#8C8577;text-align:center;margin-top:4px">'+caption+"</p>"
       : '<div class="empty"><p>Nothing to plot with these filters.</p></div>')+
-    '<p class="hint">Positions are approximate Munsell, computed from CIELAB hue and chroma. Near-neutrals gather at the centre. In “all colours” mode, small faded dots are colours you don\'t own — handy for spotting where two brands sit almost on top of each other.</p>';
+    '<p class="hint">'+(ui.wheelView==="pccs"
+      ? 'The PCCS tone map groups colours the way the Practical Color Co-ordinate System does — by lightness and saturation into named tones — which is often how you actually pick a marker (“something soft”, “something vivid”). Positions are approximations computed from CIELAB.'
+      : 'Positions are approximate Munsell, computed from CIELAB hue and chroma. Near-neutrals gather at the centre. In “all colours” mode, small faded dots are colours you don\'t own — handy for spotting where two brands sit almost on top of each other.')+'</p>';
   view.querySelectorAll("[data-layer]").forEach(el=> el.addEventListener("click", ()=>{ ui.wheelLayer=+el.dataset.layer; renderView(); }));
   view.querySelectorAll("[data-wscope]").forEach(el=> el.addEventListener("click", ()=>{ ui.wheelScope=el.dataset.wscope; renderView(); }));
+  view.querySelectorAll("[data-wview]").forEach(el=> el.addEventListener("click", ()=>{ ui.wheelView=el.dataset.wview; renderView(); }));
   const wb=document.getElementById("wheelBrand");
   if(wb) wb.addEventListener("change", ()=>{ ui.wheelBrand=wb.value; renderView(); });
   view.querySelectorAll("circle[data-key]").forEach(el=> el.addEventListener("click", ()=>openDetail(el.dataset.key)));
@@ -908,7 +962,7 @@ function openDetail(key){
       '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">'+(i+1)+" layer"+(i?"s":"")+
       ' <span style="font-weight:400;color:#8C8577;font-size:12px">'+(measured[i]?"measured":"estimate")+"</span></div>"+
       '<div class="mono" style="font-size:12px">'+layers[i]+" · rgb("+r+", "+g+", "+b+")</div>"+
-      '<div class="mono" style="font-size:11.5px;color:#8C8577;margin-top:2px">≈'+mun.text+" · hue "+Math.round(lch.H)+"° · chroma "+lch.C.toFixed(0)+" · sat "+hsl.s+"%</div></div>"+
+      '<div class="mono" style="font-size:11.5px;color:#8C8577;margin-top:2px">≈'+mun.text+" · PCCS "+pccsOf(layers[i]).notation+" · hue "+Math.round(lch.H)+"° · chroma "+lch.C.toFixed(0)+"</div></div>"+
       (isOwned?'<button class="btn" data-sample="'+i+'">Sample</button>':"")+'</div>';
   });
   // closest equivalents in the other brands

@@ -12,6 +12,6 @@ migrate automatically to the new multi-brand format.
 ## Deploying an update over the existing GitHub Pages site
 1. Upload `index.html` and `sw.js` to the Promarker-db repository (overwrite)
 2. Commit; wait 1–2 minutes
-3. On the phone: fully close the app, reopen twice (cache bumped to personal-v5)
+3. On the phone: fully close the app, reopen twice
 
 Data stays on-device; back up via About → Export. Not affiliated with any marker maker.
